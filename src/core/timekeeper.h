@@ -30,7 +30,8 @@ class TimeKeeper {
     void _returnPlayer();
     void _doAfterWait();
     void _doWatchDog();
-    
+    void _checkAutoTimer();
+    bool _restoreChecked;
 };
 
 extern TimeKeeper timekeeper;

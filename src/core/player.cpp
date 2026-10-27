@@ -1,4 +1,5 @@
 #include "options.h"
+#include <time.h>
 #include "player.h"
 #include "config.h"
 #include "telnet.h"
@@ -42,12 +43,12 @@ void Player::init() {
   _resumeFilePos = 0;
   _hasError=false;
   playerQueue = xQueueCreate( 5, sizeof( playerRequestParams_t ) );
+  if(MUTE_PIN!=255) pinMode(MUTE_PIN, OUTPUT);
   setOutputPins(false);
   delay(50);
 #ifdef MQTT_ROOT_TOPIC
   memset(burl, 0, MQTT_BURL_SIZE);
 #endif
-  if(MUTE_PIN!=255) pinMode(MUTE_PIN, OUTPUT);
   #if I2S_DOUT!=255
     #if !I2S_INTERNAL
       #ifndef I2S_MCLK
@@ -66,6 +67,14 @@ void Player::init() {
   setVolume(0);
   _status = STOPPED;
   _volTimer=false;
+
+  // === fade-in ===
+  _fadeActive = false;
+  _fadeCurrent = 0;
+  _fadeTarget = 0;
+  _fadeLastTick = 0;
+  _fadeIntervalMs = 500;
+
   //randomSeed(analogRead(0));
   #if PLAYER_FORCE_MONO
     forceMono(true);
@@ -103,6 +112,7 @@ void Player::setError(const char *e){
 
 void Player::_stop(bool alreadyStopped){
   log_i("%s called", __func__);
+  cancelFadeIn();
   if(config.getMode()==PM_SDCARD && !alreadyStopped) config.sdResumePos = player.getAudioFilePosition();		// ************
   _status = STOPPED;
   setOutputPins(false);
@@ -150,7 +160,7 @@ void Player::loop() {
   playerRequestParams_t requestP;
   if(xQueueReceive(playerQueue, &requestP, isRunning()?PL_QUEUE_TICKS:PL_QUEUE_TICKS_ST)){
     switch (requestP.type){
-      case PR_STOP: _stop(); break;
+      case PR_STOP: cancelFadeIn(); _stop(); break;
       case PR_PLAY: {
         if (requestP.payload>0) {
           config.setLastStation((uint16_t)requestP.payload);
@@ -165,6 +175,7 @@ void Player::loop() {
         break;
       }
       case PR_VOL: {
+        cancelFadeIn();
         config.setVolume(requestP.payload);
         Audio::setVolume(volToI2S(requestP.payload));
         break;
@@ -197,7 +208,30 @@ void Player::loop() {
     }
   }
   Audio::loop();
+  
   if(!isRunning() && _status==PLAYING) _stop(true);
+
+  // === fade-in ===
+  if (_fadeActive) {
+    // отменяем только если воспроизведение не началось в течение 30 секунд
+    if (!isRunning() && (millis() - _fadeStartTick) > 30000) {
+      _fadeActive = false;
+    } else {
+      uint32_t now = millis();
+      if (now - _fadeLastTick >= _fadeIntervalMs) {
+        _fadeLastTick = now;
+        if (_fadeCurrent < _fadeTarget) {
+          _fadeCurrent++;
+          config.setVolume(_fadeCurrent);
+          Audio::setVolume(volToI2S(_fadeCurrent));
+        } else {
+          _fadeActive = false;
+          config.saveVolume();
+        }
+      }
+    }
+  }
+
   if(_volTimer){
     if((millis()-_volTicks)>1500){
       config.saveVolume();
@@ -211,6 +245,7 @@ void Player::loop() {
   }
 #endif*/
 }
+
 
 void Player::setOutputPins(bool isPlaying) {
   if(REAL_LEDBUILTIN!=255) digitalWrite(REAL_LEDBUILTIN, LED_INVERT?!isPlaying:isPlaying);
@@ -335,4 +370,34 @@ void Player::setVol(uint8_t volume) {
   _volTicks = millis();
   _volTimer = true;
   player.sendCommand({PR_VOL, volume});
+}
+
+// ============================================================
+// Fade-in
+// ============================================================
+void Player::startFadeIn(uint8_t target, uint16_t durationSec) {
+  if (target == 0 || durationSec == 0) { cancelFadeIn(); return; }
+  _fadeTarget = target;
+  _fadeCurrent = 0;
+  _fadeActive = true;
+  _fadeLastTick = millis();
+  _fadeStartTick = millis();
+
+  // интервал между шагами, чтобы уложиться в durationSec
+  uint32_t totalMs = (uint32_t)durationSec * 1000UL;
+  _fadeIntervalMs = totalMs / target;
+  if (_fadeIntervalMs < 20) _fadeIntervalMs = 20;   // не чаще 50 раз/сек
+
+  // немедленно ставим 0 и не сохраняем это в EEPROM
+  _volTimer = false;
+  config.setVolume(0);
+  Audio::setVolume(volToI2S(0));
+  Serial.printf("##FADE###: start -> target=%u over %us (step every %ums)\n",
+                target, durationSec, _fadeIntervalMs);
+}
+
+void Player::cancelFadeIn() {
+  if (!_fadeActive) return;
+  _fadeActive = false;
+  Serial.println("##FADE###: cancelled");
 }

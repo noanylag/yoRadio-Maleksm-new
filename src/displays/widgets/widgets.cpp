@@ -353,9 +353,9 @@ void SliderWidget::_reset() {
 /************************
       VU WIDGET		idea Witaliy76	https://github.com/Witaliy76/Yoradio_RGB_Panel
  ************************/
-//VU-МЕТР EXPERIMENTAL
-static uint32_t holdTimeL = 1500; // время удержания пика для левого канала (мс, шаг 500 мс)
-static uint32_t holdTimeR = 1500; // время удержания пика для правого канала (мс, шаг 500 мс)
+//VU-пїЅпїЅпїЅпїЅ EXPERIMENTAL
+static uint32_t holdTimeL = 1500; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅ, пїЅпїЅпїЅ 500 пїЅпїЅ)
+static uint32_t holdTimeR = 1500; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅ, пїЅпїЅпїЅ 500 пїЅпїЅ)
 
 #if !defined(DSP_LCD) && !defined(DSP_OLED)
 VuWidget::~VuWidget() {
@@ -365,7 +365,7 @@ VuWidget::~VuWidget() {
 void VuWidget::init(WidgetConfig wconf, VUBandsConfig bands, uint16_t vumaxcolor, uint16_t vumincolor, uint16_t bgcolor) {
   Widget::init(wconf, bgcolor, bgcolor);
   _vumaxcolor = vumaxcolor;
-  _vumidcolor = config.theme.vumid; 	//  из конфига
+  _vumidcolor = config.theme.vumid; 	//  пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   _vumincolor = vumincolor;
   _bands = bands;
   _canvas = new Canvas(_bands.width * 2 + _bands.space, _bands.height);
@@ -381,56 +381,56 @@ void VuWidget::_draw(){
 
 float currentFade;
 if (config.store.vufadespeed > 0) {
-    currentFade = config.store.vufadespeed; // Если в вебе что-то настроили - берем это
+    currentFade = config.store.vufadespeed; // пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
 } else {
-    currentFade = _bands.fadespeed; // Если в памяти пусто - берем из конфига дисплея
+    currentFade = _bands.fadespeed; // пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 }
 
   uint16_t vulevel = player.getVUlevel();				// *******************************
 
-// ************** Плавная авто регулировка усиления ************************************************
- // Статические переменные для хранения максимума и коэффициента усиления
-  static float currentMax = 1.0f;			// Текущий обнаруженный максимум (от 1 до 255)
-  static float gain = 1.0f;				// Текущий коэффициент усиления
-//  static uint32_t lastPeakTime = 0;		// Время последнего сброса пика
+// ************** пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ************************************************
+ // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  static float currentMax = 1.0f;			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅ 1 пїЅпїЅ 255)
+  static float gain = 1.0f;				// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+//  static uint32_t lastPeakTime = 0;		// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
- // Извлекаем сырые значения (0-255)
+ // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (0-255)
   uint8_t rawL = (vulevel >> 8) & 0xFF;
   uint8_t rawR = vulevel & 0xFF;
   
-  // 1. Поиск пика в текущем кадре
+  // 1. пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
   uint8_t frameMax = (rawL > rawR) ? rawL : rawR;
-  if (frameMax > currentMax) { currentMax = frameMax; }		// Мгновенная реакция на максимум
+  if (frameMax > currentMax) { currentMax = frameMax; }		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   
 
-  // 2. Плавное снижение пика (постоянно по чуть-чуть) чтобы уровень не "залип" на максимуме, медленное снижение currentMax
-  if (currentMax > 1.0f) { currentMax -= 0.10f; }				//     ( currentMax -= 0.05f;) Скорость затухания, можно подстроить
+  // 2. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅ) пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ "пїЅпїЅпїЅпїЅпїЅ" пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ currentMax
+  if (currentMax > 1.0f) { currentMax -= 0.10f; }				//     ( currentMax -= 0.05f;) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-  // 3. Рассчет коэффициента усиления ( цель~85% — 217 из 255)
-  // Ограничиваем усиление (например, не более 5х), чтобы в тишине не лезли шумы
+  // 3. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ( пїЅпїЅпїЅпїЅ~85% пїЅ 217 пїЅпїЅ 255)
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ 5пїЅ), пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 //  float targetGain = 217.0f / (currentMax + 1.0f); 
   float targetGain = 240.0f / (currentMax + 1.0f); 
   if (targetGain > 5.0f) targetGain = 5.0f;
   if (targetGain < 1.0f) targetGain = 1.0f;
 
-  // Плавное изменение самого коэффициента усиления (инерция 3-4 секунды)
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 3-4 пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
 //  gain = (gain * 0.98f) + (targetGain * 0.02f);
   gain = (gain * 0.90f) + (targetGain * 0.10f);
 
-  // 4. Применяем усиление и масштабируем под количество полосок (numBands)
+  // 4. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (numBands)
   uint16_t boostedL = (uint16_t)(rawL * gain);
   uint16_t boostedR = (uint16_t)(rawR * gain);
 
-  // Ограничиваем сверху, чтобы не вышли за границы
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   if (boostedL > 255) boostedL = 255;
   if (boostedR > 255) boostedR = 255;
 
   uint8_t activeL = numBands * boostedL / 255;
   uint8_t activeR = numBands * boostedR / 255;
-// **************** Конец авто регулировки усиления ****************************************************
+// **************** пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ****************************************************
 
   // --- Peak Hold ---
-  // Усиленная логика: если fading peakHold > 0 и сигнал доходит до этого или выше сегмента, сбрасываем холд и таймер
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅ fading peakHold > 0 пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
   if (peakHoldL > 0 && activeL >= peakHoldL) {
     peakHoldL = activeL;
     peakHoldTimeL = millis();
@@ -449,16 +449,16 @@ if (config.store.vufadespeed > 0) {
   } else if (millis() - peakHoldTimeR > holdTimeR && peakHoldR > 0) {
     peakHoldR = 0;
   }
-  // --- конец Peak Hold ---
+  // --- пїЅпїЅпїЅпїЅпїЅ Peak Hold ---
 
-  // Левый канал
-    if (activeL >= measL) measL = activeL; 			// Мгновенно вверх
+  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+    if (activeL >= measL) measL = activeL; 			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
     else {
-      if (measL > currentFade * 0.1f) measL -= (currentFade * 0.1f); 	// Плавное падение вниз
+      if (measL > currentFade * 0.1f) measL -= (currentFade * 0.1f); 	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
       else measL = 0;
       if (measL < activeL) measL = activeL;
     }
-  // Правый канал
+  // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
     if (activeR >= measR) measR = activeR;
     else {
       if (measR > currentFade * 0.1f) measR -= (currentFade * 0.1f);
@@ -469,20 +469,20 @@ if (config.store.vufadespeed > 0) {
   if(measL>numBands) measL=numBands;
   if(measR>numBands) measR=numBands;
 
-  // Если основной VU-метр догнал fading peakHold — сброс peakHold
+  // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ VU-пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ fading peakHold пїЅ пїЅпїЅпїЅпїЅпїЅ peakHold
   if (measL >= peakHoldL) peakHoldL = measL;
   if (measR >= peakHoldR) peakHoldR = measR;
 
-  // Очистка области
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   _canvas->fillRect(0, 0, _bands.width * 2 + _bands.space, _bands.height, _bgcolor);
 
-  // Левая и правая полосы (сегменты)
+  // пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
   uint8_t redBands = std::max(2, numBands / 5);
   uint8_t BandsWidht = _bands.width / numBands - _bands.vspace;
   uint8_t BandsHeight = _bands.height / numBands - _bands.vspace;
-  uint8_t spacecorrect = _bands.width - BandsWidht * numBands - _bands.vspace * (numBands-1);	// коррекция ошибок округления
+  uint8_t spacecorrect = _bands.width - BandsWidht * numBands - _bands.vspace * (numBands-1);	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-   if(_config.align){											// Если WA_CENTER или WA_RIGHT - горизонтально
+   if(_config.align){											// пїЅпїЅпїЅпїЅ WA_CENTER пїЅпїЅпїЅ WA_RIGHT - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
       #ifndef BOOMBOX_STYLE															// Studio
          BandsWidht = _bands.width*2 / numBands - _bands.vspace;
             int yR = (_bands.height + _bands.space)/2 - 1;
@@ -501,7 +501,7 @@ if (config.store.vufadespeed > 0) {
            _canvas->fillRect(xR, 0, BandsWidht, _bands.height, i < measR ? colorLR : _bgcolor);
          }
       #endif
-   }else{													// Иначе WA_LEFT - Standart (вертикально)
+   }else{													// пїЅпїЅпїЅпїЅпїЅ WA_LEFT - Standart (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
            int xR = _bands.width + _bands.space;
          for (uint8_t i = 0; i < numBands; ++i) {
            int yLR = (numBands - i) * (BandsHeight + _bands.vspace);
@@ -511,11 +511,11 @@ if (config.store.vufadespeed > 0) {
          }
    }
 
-  // --- Peak Hold визуализация ---
+  // --- Peak Hold пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
   uint16_t peakColorL = (peakHoldL > 4*redBands) ? _vumaxcolor : (peakHoldL > 3*redBands) ? _vumidcolor : _vumincolor;
   uint16_t peakColorR = (peakHoldR > 4*redBands) ? _vumaxcolor : (peakHoldR > 3*redBands) ? _vumidcolor : _vumincolor;
 
-  // Fading (затухание)
+  // Fading (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
   float fadeL = 1.0f - float(millis() - peakHoldTimeL) / holdTimeL;
   if (fadeL < 0.2f) fadeL = 0.2f;
   float fadeR = 1.0f - float(millis() - peakHoldTimeR) / holdTimeR;
@@ -531,7 +531,7 @@ if (config.store.vufadespeed > 0) {
   uint16_t fadedPeakColorL = fadeColor(peakColorL, fadeL);
   uint16_t fadedPeakColorR = fadeColor(peakColorR, fadeR);
 
-  if(_config.align){																// Если горизонтально
+  if(_config.align){																// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
      #ifndef BOOMBOX_STYLE															// Studio
          BandsWidht = _bands.width*2 / numBands - _bands.vspace;
 //         peakColorL = (peakHoldL < redBands) ? _vumaxcolor : (peakHoldL < 3*redBands) ? _vumidcolor : _vumincolor;
@@ -554,7 +554,7 @@ if (config.store.vufadespeed > 0) {
            _canvas->fillRect(xR, 0, BandsWidht/2, _bands.height, fadedPeakColorR);
          }
      #endif
-  }else{																		// Иначе - Standart (вертикально)
+  }else{																		// пїЅпїЅпїЅпїЅпїЅ - Standart (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
          if (peakHoldL > 0 && peakHoldL <= numBands) {
            int yL = (numBands - peakHoldL+1) * (BandsHeight + _bands.vspace) - BandsWidht;
            _canvas->fillRect(0, yL, _bands.width, BandsHeight/2, fadedPeakColorL);
@@ -566,12 +566,16 @@ if (config.store.vufadespeed > 0) {
          }
   }
 
-  // Прорисовка области
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   dsp.drawRGBBitmap(_config.left, _config.top, _canvas->getBuffer(), _bands.width * 2 + _bands.space, _bands.height);
 }
 
 void VuWidget::loop(){
   if(_active || !_locked) _draw();
+}
+
+void VuWidget::clearArea(){
+  dsp.fillRect(0, _config.top, dsp.width(), _bands.height, _bgcolor);
 }
 
 void VuWidget::_clear(){
@@ -584,6 +588,7 @@ void VuWidget::init(WidgetConfig wconf, VUBandsConfig bands, uint16_t vumaxcolor
 }
 void VuWidget::_draw(){ }
 void VuWidget::loop(){ }
+void VuWidget::clearArea(){ }
 void VuWidget::_clear(){ }
 #endif
 
@@ -636,6 +641,12 @@ uint16_t _textWidth(const char *txt){
 /************************
       NUM WIDGET
  ************************/
+NumWidget::~NumWidget() {
+#ifdef PSFBUFFER
+  delete _fb;
+#endif
+}
+
 void NumWidget::init(WidgetConfig wconf, uint16_t buffsize, bool uppercase, uint16_t fgcolor, uint16_t bgcolor) {
   Widget::init(wconf, fgcolor, bgcolor);
   _buffsize = buffsize;
@@ -646,6 +657,32 @@ void NumWidget::init(WidgetConfig wconf, uint16_t buffsize, bool uppercase, uint
   _textwidth = _oldtextwidth = _oldleft = 0;
   _uppercase = uppercase;
   _textheight = TIME_SIZE/*wconf.textsize*/;
+#ifdef PSFBUFFER
+  uint16_t maxDigitWidth = 0;
+  for (char digit = '0'; digit <= '9'; digit++) {
+    const char digitText[] = { digit, '\0' };
+    maxDigitWidth = max(maxDigitWidth, _textWidth(digitText));
+  }
+  uint16_t availableWidth = dsp.width();
+  if (_config.align != WA_CENTER) {
+    availableWidth = _config.left < dsp.width() ? dsp.width() - _config.left : 0;
+  }
+  uint16_t maxDigits = maxDigitWidth && _buffsize > 1
+      ? min(static_cast<uint16_t>(_buffsize - 1), static_cast<uint16_t>(availableWidth / maxDigitWidth))
+      : 0;
+  uint16_t fbWidth = maxDigitWidth * maxDigits;
+  if (fbWidth > 0 && _textheight > 0) {
+    _fb = new psFrameBuffer(fbWidth, _textheight);
+    if (_config.align == WA_CENTER) {
+      _fbLeft = (dsp.width() - fbWidth) / 2;
+    } else if (_config.align == WA_RIGHT) {
+      _fbLeft = dsp.width() - fbWidth - _config.left;
+    } else {
+      _fbLeft = _config.left;
+    }
+    _fb->begin(&dsp, _fbLeft, _config.top - _textheight, fbWidth, _textheight, _bgcolor);
+  }
+#endif
 }
 
 void NumWidget::setText(const char* txt) {
@@ -656,7 +693,11 @@ void NumWidget::setText(const char* txt) {
 #if defined(DSP_OLED) && DSP_MODEL!=DSP_SSD1322
   if(Clock_GFXfontPtr==nullptr) realth = _textheight * 8; //CHARHEIGHT
 #endif
-  if (_active)
+  if (_active
+#ifdef PSFBUFFER
+      && (!_fb || !_fb->ready())
+#endif
+  )
   #ifndef CLOCKFONT5x7
     dsp.fillRect(_oldleft == 0 ? _realLeft() : min(_oldleft, _realLeft()),  _config.top-_textheight+1, max(_oldtextwidth, _textwidth), realth, _bgcolor);
   #else
@@ -681,11 +722,28 @@ void NumWidget::_getBounds() {
 void NumWidget::_draw() {
 #ifndef DSP_LCD
   if(!_active || TIME_SIZE<2) return;
+#endif
+  if(!_active) return;
+#ifdef PSFBUFFER
+  if (_fb && _fb->ready()) {
+    _fb->clear();
+    _fb->setTextSize(Clock_GFXfontPtr == nullptr ? TIME_SIZE : 1);
+    _fb->setFont(Clock_GFXfontPtr);
+    _fb->setTextColor(_fgcolor, _bgcolor);
+    _fb->setCursor(_realLeft() - _fbLeft, _textheight);
+    _fb->print(_text);
+    _fb->setFont();
+    _fb->display();
+    dsp.setFont();
+    strlcpy(_oldtext, _text, _buffsize);
+    return;
+  }
+#endif
+#ifndef DSP_LCD
   dsp.setTextSize(Clock_GFXfontPtr==nullptr?TIME_SIZE:1);
   dsp.setFont(Clock_GFXfontPtr);
   dsp.setTextColor(_fgcolor, _bgcolor);
 #endif
-  if(!_active) return;
   dsp.setCursor(_realLeft(), _config.top);
   dsp.print(_text);
   strlcpy(_oldtext, _text, _buffsize);
@@ -715,6 +773,94 @@ void ProgressWidget::loop() {
   if (_checkDelay(_speed, _scrolldelay)) {
     _progress();
   }
+}
+
+void BluetoothWidget::init(uint16_t fgcolor, uint16_t bgcolor){
+  Widget::init({0, 0, 0, WA_CENTER}, fgcolor, bgcolor);
+  _backgroundVisible = true;
+  _activityBlinking = false;
+  _activityStart = 0;
+}
+
+void BluetoothWidget::setBackgroundVisible(bool visible){
+  if (_backgroundVisible == visible) return;
+  _backgroundVisible = visible;
+  if (_active && !_locked) _draw();
+}
+
+void BluetoothWidget::resetActivityBlink(){
+  _activityBlinking = false;
+  _activityStart = 0;
+  setBackgroundVisible(true);
+}
+
+void BluetoothWidget::loop(){
+#if defined(BLUETOOTH_ENABLED) && BLUETOOTH_ENABLED && defined(BLUETOOTH_ACTIVITY_PIN) && BLUETOOTH_ACTIVITY_PIN != 255
+  const uint32_t now = millis();
+  const bool activity = digitalRead(BLUETOOTH_ACTIVITY_PIN) == BLUETOOTH_ACTIVITY_ACTIVE_LEVEL;
+  if (!activity) {
+    _activityBlinking = false;
+    setBackgroundVisible(true);
+    return;
+  }
+
+  if (!_activityBlinking) {
+    _activityBlinking = true;
+    _activityStart = now;
+    setBackgroundVisible(true);
+    return;
+  }
+
+  const uint32_t phase = (now - _activityStart) % 1500;
+  setBackgroundVisible(phase < 1000);
+#endif
+}
+
+void BluetoothWidget::_draw(){
+#ifndef DSP_LCD
+  if(!_active) return;
+  const int16_t side = min(dsp.width(), dsp.height());
+  const int16_t iconHeight = side * 53 / 100;
+  const int16_t iconWidth = iconHeight * 3 / 4;
+  const uint8_t textSize = side / 75 < 1 ? 1 : (side / 75 > 3 ? 3 : side / 75);
+  const int16_t textWidth = 9 * 6 * textSize;
+  const int16_t markSize = max<uint8_t>(4, textSize * 2);
+  const int16_t gap = side * 9 / 100;
+  const int16_t contentHeight = iconHeight + gap + 8 * textSize;
+  const int16_t iconTop = (dsp.height() - contentHeight) / 2;
+  const int16_t iconLeft = (dsp.width() - iconWidth) / 2;
+  const int16_t centerX = dsp.width() / 2;
+  const int16_t centerY = iconTop + iconHeight / 2;
+  const int16_t halfHeight = iconHeight * 43 / 100;
+  const int16_t halfWidth = iconWidth * 30 / 100;
+  dsp.fillRoundRect(iconLeft, iconTop, iconWidth, iconHeight, iconWidth / 2,
+                    _backgroundVisible ? 0x2DB4 : _bgcolor);
+  for(int8_t offset = -3; offset <= 3; ++offset){
+    dsp.drawLine(centerX + offset, centerY - halfHeight, centerX + offset, centerY + halfHeight, _fgcolor);
+    dsp.drawLine(centerX + offset, centerY, centerX + halfWidth + offset, centerY - halfHeight / 2, _fgcolor);
+    dsp.drawLine(centerX + halfWidth + offset, centerY - halfHeight / 2, centerX + offset, centerY - halfHeight, _fgcolor);
+    dsp.drawLine(centerX + offset, centerY, centerX + halfWidth + offset, centerY + halfHeight / 2, _fgcolor);
+    dsp.drawLine(centerX + halfWidth + offset, centerY + halfHeight / 2, centerX + offset, centerY + halfHeight, _fgcolor);
+    dsp.drawLine(centerX + offset, centerY, centerX - halfWidth + offset, centerY - halfHeight / 2, _fgcolor);
+    dsp.drawLine(centerX + offset, centerY, centerX - halfWidth + offset, centerY + halfHeight / 2, _fgcolor);
+  }
+
+  const int16_t fullWidth = textWidth + markSize + 3;
+  const int16_t textLeft = (dsp.width() - fullWidth) / 2;
+  const int16_t textTop = iconTop + iconHeight + gap;
+  dsp.setFont();
+  dsp.setTextSize(textSize);
+  dsp.setTextColor(_fgcolor, _bgcolor);
+  dsp.setCursor(textLeft, textTop);
+  dsp.print("Bluetooth");
+  const int16_t markRadius = markSize / 2;
+  const int16_t markCenterX = textLeft + textWidth + markRadius + 2;
+  const int16_t markCenterY = textTop + markRadius;
+  dsp.drawCircle(markCenterX, markCenterY, markRadius, _fgcolor);
+  dsp.setTextSize(1);
+  dsp.setCursor(markCenterX - 2, markCenterY - 4);
+  dsp.print("R");
+#endif
 }
 
 /**************************
@@ -844,7 +990,11 @@ void ClockWidget::_printClock(bool force){
    #endif
           gfx.setTextSize(_dateheight);
           #if DSP_MODEL==DSP_GC9A01A
-            gfx.setCursor((dsp.width()-_datewidth)/2, _top() + _space);
+            int16_t dateLeft = (static_cast<int16_t>(dsp.width()) - static_cast<int16_t>(_datewidth)) / 2;
+            #ifdef PSFBUFFER
+              if (_fb && _fb->ready()) dateLeft -= _clockleft;
+            #endif
+            gfx.setCursor(dateLeft, _top() + _space);
           #else
             gfx.setCursor(_left()+(_clockwidth - _datewidth)/2, _top() + _space);						// ********************************
           #endif
@@ -907,6 +1057,15 @@ void ClockWidget::_clearClock(){
 #endif
 }
 
+void ClockWidget::clearDate(){
+#if DSP_MODEL==DSP_GC9A01A && !defined(HIDE_DATE)
+  if(!_active || config.isScreensaver || !_fullclock || !_datebuf[0]) return;
+  uint16_t dateWidth = strlen(_datebuf) * CHARWIDTH * _dateheight;
+  int16_t dateLeft = (static_cast<int16_t>(dsp.width()) - static_cast<int16_t>(dateWidth)) / 2;
+  dsp.fillRect(dateLeft, _config.top + _space, dateWidth, CHARHEIGHT * _dateheight, config.theme.background);
+#endif
+}
+
 void ClockWidget::draw(bool force){
   if(!_active) return;
   _printClock(_getTime() || force);
@@ -920,9 +1079,8 @@ void ClockWidget::_draw(){
 void ClockWidget::_reset(){
 #ifdef PSFBUFFER
   if(_fb->ready()) {
-    _fb->freeBuffer();
     _getTimeBounds();
-    _begin();
+    _fb->move(_clockleft, _config.top-_timeheight, _clockwidth, _clockheight+1, false);
   }
 #endif
 }
@@ -943,6 +1101,8 @@ void ClockWidget::_printClock(bool force){
 }
 
 void ClockWidget::_clearClock(){}
+
+void ClockWidget::clearDate(){}
 
 void ClockWidget::draw(bool force){
   if(!_active) return;
@@ -991,44 +1151,154 @@ void BitrateWidget::_charSize(uint8_t textsize, uint8_t& width, uint16_t& height
 #endif
 }
 
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ _reset()
+static uint16_t blockLastBitrate = 9999;
+static BitrateFormat blockLastFormat = BF_UNKNOWN;
+static bool blockForceFirstDraw = true;
+
 void BitrateWidget::_draw(){
-  _clear();
-//  if(!_active || _format == BF_UNKNOWN || _bitrate==0) return;
-  if(!_active || _format == BF_UNKNOWN || player.status()!=PLAYING) return;
-  dsp.drawRect(_config.left, _config.top, _dimension, _dimension, _fgcolor);
-  dsp.fillRect(_config.left, _config.top + _dimension/2+1, _dimension, _dimension/2-1, _fgcolor);
+ 
+  if(!_active || player.status()!=PLAYING) return;
+
+#if DSP_MODEL==DSP_GC9A01A
+  // ===== GC9A01A: пїЅпїЅпїЅпїЅпїЅ + пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ =====
+  const char* fmt = "";
+  switch(_format){
+    case BF_MP3:  fmt = "mp3"; break;
+    case BF_AAC:  fmt = "aac"; break;
+    case BF_FLAC: fmt = "flc"; break;
+    case BF_WAV:  fmt = "wav"; break;
+    case BF_OGG:  fmt = "ogg"; break;
+    case BF_VOR:  fmt = "vor"; break;
+    case BF_OPU:  fmt = "opu"; break;
+    default: break;
+  }
+
+  char brbuf[8];
+  if(_bitrate == 0) {
+    snprintf(brbuf, sizeof(brbuf), "---");
+  } else if(_bitrate < 999) {
+    snprintf(brbuf, sizeof(brbuf), "%d", _bitrate);
+  } else { 
+    float _br = (float)_bitrate / 1000; 
+    snprintf(brbuf, sizeof(brbuf), "%.1f", _br); 
+  }
+
+  char line[24];
+  if(_format == BF_UNKNOWN || _bitrate == 0) {
+    snprintf(line, sizeof(line), "--- --- ---   "); 
+  } else {
+    snprintf(line, sizeof(line), "%s %s KBS  ", fmt, brbuf);
+  }
 
   dsp.setFont();
   dsp.setTextSize(_config.textsize);
   dsp.setTextColor(_fgcolor, _bgcolor);
-  if(_bitrate < 999)  snprintf(_buf, 6, "%d", _bitrate);
-  else {
+
+  uint16_t tw = strlen(line) * _charWidth;
+  uint16_t x;
+  switch(_config.align){
+    case WA_CENTER: x = (dsp.width() - tw) / 2; break;
+    case WA_RIGHT:  x = dsp.width() - tw - _config.left; break;
+    default:        x = _config.left; break;
+  }
+  dsp.setCursor(x, _config.top);
+  dsp.print(line);
+
+#else
+  // ===== ST7789_170 пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ =====
+
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  char codecBuf[5];
+  if (player.status() != PLAYING) {
+    strlcpy(codecBuf, "...", sizeof(codecBuf));
+  } else {
+    switch(_format){
+      case BF_MP3:  strlcpy(codecBuf, "mp3", sizeof(codecBuf)); break;
+      case BF_AAC:  strlcpy(codecBuf, "aac", sizeof(codecBuf)); break;
+      case BF_FLAC: strlcpy(codecBuf, "flc", sizeof(codecBuf)); break;
+      case BF_WAV:  strlcpy(codecBuf, "wav", sizeof(codecBuf)); break;
+      case BF_OGG:  strlcpy(codecBuf, "ogg", sizeof(codecBuf)); break;
+      case BF_VOR:  strlcpy(codecBuf, "vor", sizeof(codecBuf)); break;
+      case BF_OPU:  strlcpy(codecBuf, "opu", sizeof(codecBuf)); break;
+      default:      strlcpy(codecBuf, "...", sizeof(codecBuf)); break;
+    }
+  }
+
+  // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, 
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ fillRect-пїЅпїЅ!
+  if (!blockForceFirstDraw && _bitrate == blockLastBitrate && _format == blockLastFormat) {
+    return; 
+  }
+
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+  blockLastBitrate = _bitrate;
+  blockLastFormat = _format;
+  blockForceFirstDraw = false;
+
+  // 1. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ) пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+  dsp.fillRect(_config.left + 1, _config.top + 1, _dimension - 2, _dimension / 2 - 1, _bgcolor);
+
+  // 2. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ) пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
+  dsp.fillRect(_config.left + 1, _config.top + _dimension / 2 + 1, _dimension - 2, _dimension / 2 - 2, _fgcolor);
+
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  dsp.drawRect(_config.left, _config.top, _dimension, _dimension, _fgcolor);
+  dsp.drawFastHLine(_config.left, _config.top + _dimension / 2, _dimension, _fgcolor);
+
+  dsp.setFont();
+  dsp.setTextSize(_config.textsize);
+  
+  // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ) ---
+  dsp.setTextColor(_fgcolor, _bgcolor);
+
+  if (player.status() != PLAYING || _bitrate == 0) {
+    snprintf(_buf, 6, "---");
+  } else if(_bitrate < 999) {
+    snprintf(_buf, 6, "%d", _bitrate);
+  } else {
     float _br = (float)_bitrate / 1000;
     snprintf(_buf, 6, "%.1f", _br);
   }
 
-//  dsp.setCursor(_config.left + _dimension/2 - _charWidth*strlen(_buf)/2 + 1, _config.top + _dimension/4 - _textheight/2+1);
-  dsp.setCursor(_config.left + _dimension/2 - _charWidth*strlen(_buf)/2 + 1, _config.top + _dimension/4 - _textheight/2 + 2);
+  uint16_t activeLen = strlen(_buf);
+  uint16_t startX = _config.left + _dimension / 2 - (_charWidth * activeLen) / 2 + 1;
 
+  dsp.setCursor(startX, _config.top + _dimension / 4 - _textheight/2 + 2);
   dsp.print(_buf);
+
+  // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ) ---
   dsp.setTextColor(_bgcolor, _fgcolor);
 
-  dsp.setCursor(_config.left + _dimension/2 - _charWidth*3/2 + 1, _config.top + _dimension - _dimension/4 - _textheight/2);
-  switch(_format){
-    case BF_MP3:  dsp.print("mp3"); break;
-    case BF_AAC:  dsp.print("aac"); break;
-    case BF_FLAC: dsp.print("flc"); break;
-    case BF_WAV:  dsp.print("wav"); break;
-    case BF_OGG:  dsp.print("ogg"); break;
-    case BF_VOR:  dsp.print("vor"); break;
-    case BF_OPU:  dsp.print("opu"); break;
-    default:                        break;
-  }
+  // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ X пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+  uint16_t codecLen = strlen(codecBuf);
+  uint16_t codecX = _config.left + _dimension / 2 - (_charWidth * codecLen) / 2 + 1;
+
+  dsp.setCursor(codecX, _config.top + _dimension - _dimension / 4 - _textheight / 2);
+  dsp.print(codecBuf);
+#endif
 }
 
 void BitrateWidget::_clear() {
+#if DSP_MODEL==DSP_GC9A01A
+  // пїЅпїЅпїЅ GC9A01A пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ "mp3 128"
+  dsp.fillRect(_config.left, _config.top, dsp.width() - _config.left, _textheight, _bgcolor);
+#else
   dsp.fillRect(_config.left, _config.top, _dimension*1.08, _dimension, _bgcolor);
+#endif
 }
+
+void BitrateWidget::_reset() {
+  blockForceFirstDraw = true;
+  blockLastBitrate = 9999;
+  blockLastFormat = BF_UNKNOWN;
+}
+
+
+
+
+
+
 
 
 /**************************
@@ -1054,7 +1324,8 @@ uint8_t PlayListWidget::_fillPlMenu(int from, uint8_t count) {
   uint8_t c       = 0;
   bool    finded  = false;
   if (config.playlistLength() == 0) {
-    return 0;
+    while (c < count) _printPLitem(c++, "");
+    return c;
   }
   File playlist = config.SDPLFS()->open(REAL_PLAYL, "r");
   File index = config.SDPLFS()->open(REAL_INDEX, "r");
@@ -1085,28 +1356,42 @@ uint8_t PlayListWidget::_fillPlMenu(int from, uint8_t count) {
     }
     break;
   }
+  while (c < count) _printPLitem(c++, "");
   playlist.close();
   return c;
 }
 #ifndef DSP_LCD
 void PlayListWidget::drawPlaylist(uint16_t currentItem) {
-  uint8_t lastPos = _fillPlMenu(currentItem - _plCurrentPos, _plTtemsCount);
-  if(lastPos<_plTtemsCount){
-    dsp.fillRect(0, lastPos*_plItemHeight+_plYStart, dsp.width(), dsp.height()/2, config.theme.background);
-  }
+  _fillPlMenu(currentItem - _plCurrentPos, _plTtemsCount);
 }
 
 void PlayListWidget::_printPLitem(uint8_t pos, const char* item){
+  char line[BUFLEN];
+  const uint16_t left = TFT_FRAMEWDT;
+  const uint16_t charWidth = CHARWIDTH * playlistConf.widget.textsize;
+  uint16_t maxChars = charWidth && dsp.width() > left
+      ? (dsp.width() - left) / charWidth
+      : 0;
+  maxChars = min(maxChars, (uint16_t)(sizeof(line) - 1));
+  const char* translatedItem = utf8Rus(item, false);
+  uint16_t length = 0;
+  while (length < maxChars && translatedItem[length]) {
+    line[length] = translatedItem[length];
+    length++;
+  }
+  while (length < maxChars) line[length++] = ' ';
+  line[length] = '\0';
+
+  dsp.setFont();
   dsp.setTextSize(playlistConf.widget.textsize);
   if (pos == _plCurrentPos) {
-    _current->setText(item);
+    dsp.setTextColor(config.theme.plcurrent, config.theme.plcurrentbg);
   } else {
     uint8_t plColor = (abs(pos - _plCurrentPos)-1)>4?4:abs(pos - _plCurrentPos)-1;
     dsp.setTextColor(config.theme.playlist[plColor], config.theme.background);
-    dsp.setCursor(TFT_FRAMEWDT, _plYStart + pos * _plItemHeight);
-    dsp.fillRect(0, _plYStart + pos * _plItemHeight - 1, dsp.width(), _plItemHeight - 2, config.theme.background);
-    dsp.print(utf8Rus(item, false));
   }
+  dsp.setCursor(left, _plYStart + pos * _plItemHeight);
+  dsp.print(line);
 }
 #else
 void PlayListWidget::_printPLitem(uint8_t pos, const char* item){

@@ -24,15 +24,16 @@ SPIClass  SDSPI(HSPI);
 
 SDManager sdman(FSImplPtr(new VFSImpl()));
 
-bool SDManager::start(){
-  ready = begin(SDC_CS, SDREALSPI, SDSPISPEED);
-  vTaskDelay(10);
-  if(!ready) ready = begin(SDC_CS, SDREALSPI, SDSPISPEED);
-  vTaskDelay(20);
-  if(!ready) ready = begin(SDC_CS, SDREALSPI, SDSPISPEED);
-  vTaskDelay(50);
-  if(!ready) ready = begin(SDC_CS, SDREALSPI, SDSPISPEED);
-  return ready;
+bool SDManager::start(uint8_t maxAttempts){
+  for(uint8_t attempt = 0; attempt < maxAttempts; ++attempt){
+    ready = begin(SDC_CS, SDREALSPI, SDSPISPEED);
+    if(ready) return true;
+    if(attempt + 1 < maxAttempts){
+      const uint8_t retryDelay = attempt == 0 ? 10 : attempt == 1 ? 20 : 50;
+      vTaskDelay(pdMS_TO_TICKS(retryDelay));
+    }
+  }
+  return false;
 }
 
 void SDManager::stop(){
@@ -135,5 +136,4 @@ void SDManager::indexSDPlaylist() {
   delay(50);
 }
 #endif
-
 

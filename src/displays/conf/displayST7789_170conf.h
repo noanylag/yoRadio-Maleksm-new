@@ -2,7 +2,7 @@
     ST7789 320x170 displays configuration file.
     Copy this file to yoRadio/src/displays/conf/displayST7789conf_custom.h
     and modify it
-    More info on https://github.com/e2002/yoradio/wiki/Widgets#widgets-description
+    More info on https://github.com
 *************************************************************************************/
 
 #ifndef displayST7789conf_h
@@ -13,7 +13,7 @@
 #define MAX_WIDTH       DSP_WIDTH-TFT_FRAMEWDT*2
 
 #if BITRATE_FULL
-  #define TITLE_FIX 39
+  #define TITLE_FIX 42 // Защитный отступ для бегущих строк
 #else
   #define TITLE_FIX 0
 #endif
@@ -44,8 +44,8 @@
 
 /* SROLLS  */                            /* {{ left, top, fontsize, align }, buffsize, uppercase, width, scrolldelay, scrolldelta, scrolltime } */
 const ScrollConfig metaConf    PROGMEM = {{ TFT_FRAMEWDT, TFT_FRAMEWDT, 3, WA_LEFT }, 140, false, MAX_WIDTH, 5000, 5, 30 };
-const ScrollConfig title1Conf     PROGMEM = {{ TFT_FRAMEWDT, 32, 2, WA_LEFT }, 140, false, DSP_WIDTH-TITLE_FIX-3, 5000, 4, 30 };
-const ScrollConfig title2Conf     PROGMEM = {{ TFT_FRAMEWDT, 51, 2, WA_LEFT }, 140, false, DSP_WIDTH-TITLE_FIX-3, 5000, 4, 30 };
+const ScrollConfig title1Conf     PROGMEM = {{ TFT_FRAMEWDT, 32, 2, WA_LEFT }, 140, false, DSP_WIDTH-TITLE_FIX-8, 5000, 4, 30 };
+const ScrollConfig title2Conf     PROGMEM = {{ TFT_FRAMEWDT, 51, 2, WA_LEFT }, 140, false, DSP_WIDTH-TITLE_FIX-8, 5000, 4, 30 }; // Третья строка укорочена справа на 3 пикселя
 const ScrollConfig playlistConf   PROGMEM = {{ TFT_FRAMEWDT, 112, 2, WA_LEFT }, 140, false, MAX_WIDTH, 1000, 4, 30 };
 const ScrollConfig apTitleConf   PROGMEM = {{ TFT_FRAMEWDT, TFT_FRAMEWDT, 3, WA_CENTER }, 140, false, MAX_WIDTH, 0, 4, 20 };
 const ScrollConfig apSettConf    PROGMEM = {{ TFT_FRAMEWDT, 170-20, 1, WA_LEFT }, 140, false, MAX_WIDTH, 0, 4, 30 };
@@ -54,8 +54,14 @@ const ScrollConfig weatherConf  PROGMEM = {{ TFT_FRAMEWDT, 70, 2, WA_LEFT }, 250
 /* BACKGROUNDS  */                       /* {{ left, top, fontsize, align }, width, height, outlined } */
 const FillConfig  metaBGConf       PROGMEM = {{ 0, 0, 0, WA_LEFT }, DSP_WIDTH, 28, false };
 const FillConfig  metaBGConfInv  PROGMEM = {{ 0, 0, 0, WA_LEFT }, DSP_WIDTH, 2, false };
-const FillConfig  volbarConf         PROGMEM = {{ 0, 156, 0, WA_LEFT }, BATTERY_ON?273:320, 8, true };
-const WidgetConfig   rssiConf     PROGMEM = { BATTERY_ON?47:0, BATTERY_ON?146:139, BATTERY_ON?1:2, WA_RIGHT };
+const FillConfig  volbarConf         PROGMEM = {{ 3, 156, 0, WA_LEFT }, BATTERY_ON?273:314, 8, true }; // Сдвинута вправо на 3пкс, длина на весь экран минус 3пкс
+
+//const WidgetConfig   rssiConf     PROGMEM = { BATTERY_ON?47:0, BATTERY_ON?146:139, BATTERY_ON?1:2, WA_RIGHT };
+//const WidgetConfig   rssiConf     PROGMEM = { BATTERY_ON?44:0, BATTERY_ON?146:139, BATTERY_ON?1:2, WA_RIGHT };  // только при включенной батарейке
+  const WidgetConfig   rssiConf     PROGMEM = { BATTERY_ON?44:3, BATTERY_ON?146:139, BATTERY_ON?1:2, WA_RIGHT };
+
+
+
 const FillConfig  playlBGConf      PROGMEM = {{ 0, 107, 0, WA_LEFT }, DSP_WIDTH, 24, false };
 const FillConfig  heapbarConf     PROGMEM = {{ 0, 165, 0, WA_LEFT }, 273, 5, true };
 
@@ -63,26 +69,26 @@ const FillConfig  heapbarConf     PROGMEM = {{ 0, 165, 0, WA_LEFT }, 273, 5, tru
 const WidgetConfig bootstrConf    PROGMEM = { 0, 150, 1, WA_CENTER };
 const WidgetConfig bitrateConf    PROGMEM = { TFT_FRAMEWDT, 32,  2, WA_RIGHT};
 const WidgetConfig voltxtConf     PROGMEM = {  TFT_FRAMEWDT, 214,  1, WA_CENTER };
-const WidgetConfig  iptxtConf     PROGMEM = { 50, 146, 1, WA_LEFT };
+const WidgetConfig  iptxtConf     PROGMEM = { 75, 146, 1, WA_LEFT };
 const WidgetConfig numConf        PROGMEM = {  0, 120, 0, WA_CENTER };
 const WidgetConfig apNameConf     PROGMEM = { TFT_FRAMEWDT, 40, 2, WA_CENTER };
 const WidgetConfig apName2Conf    PROGMEM = { TFT_FRAMEWDT, 65, 2, WA_CENTER };
 const WidgetConfig apPassConf     PROGMEM = { TFT_FRAMEWDT, 100, 2, WA_CENTER };
 const WidgetConfig apPass2Conf    PROGMEM = { TFT_FRAMEWDT, 125, 2, WA_CENTER };
 const WidgetConfig  clockConf     PROGMEM = {BATTERY_ON?40:30, 141, 0, WA_RIGHT };  	/* 52 is a fixed font size */
-const WidgetConfig vuConf         PROGMEM = { 0, 89, 1, WA_LEFT };
+const WidgetConfig vuConf         PROGMEM = { 3, 89, 1, WA_LEFT };
 const WidgetConfig bootWdtConf    PROGMEM = { TFT_FRAMEWDT, 120, 2, WA_CENTER };
 #ifdef CPU_LOAD
-    const WidgetConfig  cpuConf   PROGMEM = { 50, 146, 1, WA_LEFT };
+    const WidgetConfig  cpuConf   PROGMEM = { 75, 146, 1, WA_LEFT };
 #endif
 
 const ProgressConfig  bootPrgConf  PROGMEM = { 100, 14, 4 };
 //const BitrateConfig  fullbitrateConf   PROGMEM = {{DSP_WIDTH-TFT_FRAMEWDT-34, 36, 1, WA_LEFT}, 40 };
-const BitrateConfig fullbitrateConf PROGMEM = {{DSP_WIDTH-TITLE_FIX, 29, 2, WA_CENTER}, TITLE_FIX };
+const BitrateConfig fullbitrateConf PROGMEM = {{DSP_WIDTH-TITLE_FIX-3, 29, 2, WA_CENTER}, TITLE_FIX };
 
 /* BANDS  */                             /* { onebandwidth, onebandheight, bandsHspace, bandsVspace, numofbands, fadespeed } */
-const VUBandsConfig bandsConf   	PROGMEM = { 20, 65, 4, 1, 15, 8 };
-//const VUBandsConfig bandsConf     PROGMEM = { (MAX_WIDTH-TFT_FRAMEWDT*3)/2, 3, TFT_FRAMEWDT, 1, 15, 8 };	//Boombox
+// Оптимальная ширина для 15 полос (по 11 пикселей с зазором 2), чтобы шкала стала широкой, но не доходила до часов
+const VUBandsConfig bandsConf   	PROGMEM = { 25, 65, 2, 1, 15, 8 };
 
 /* STRINGS  */
 const char         numtxtFmt[]    PROGMEM = "%d";

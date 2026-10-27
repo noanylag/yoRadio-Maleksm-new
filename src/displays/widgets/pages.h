@@ -29,7 +29,7 @@ class Pager{
     void loop();
     Page& addPage(Page* page, bool setNow = false);
     bool removePage(Page* page);
-    void setPage(Page* page, bool black=false);
+    void setPage(Page* page, bool black=false, bool clear=true);
   private:
     std::list<Page*> _pages;
     

@@ -17,7 +17,6 @@
 #endif
 
 #if RTCSUPPORTED
-  //#define TIME_SYNC_INTERVAL  24*60*60*1000
   #define TIME_SYNC_INTERVAL  config.store.timeSyncIntervalRTC*60*60*1000
 #else
   #define TIME_SYNC_INTERVAL  config.store.timeSyncInterval*60*1000
@@ -68,6 +67,7 @@ TimeKeeper::TimeKeeper(){
   forceTimeSync = true;
   _returnPlayerTime = _doAfterTime = 0;
   weatherBuf=NULL;
+  _restoreChecked = false;
   #if (DSP_MODEL!=DSP_DUMMY || defined(USE_NEXTION)) && !defined(HIDE_WEATHER)
     weatherBuf = (char *) malloc(sizeof(char) * WEATHER_STRING_L);
     memset(weatherBuf, 0, WEATHER_STRING_L);
@@ -82,7 +82,6 @@ bool TimeKeeper::loop0(){ // core0 (display)
   static uint32_t _last5s = 0;
   if (currentTime - _last1s >= 1000) { // 1sec
     _last1s = currentTime;
-//#ifndef DUMMYDISPLAY
 #if !defined(DUMMYDISPLAY) || defined(USE_NEXTION)
   #ifndef UPCLOCK_CORE1
     _upClock();
@@ -95,10 +94,9 @@ bool TimeKeeper::loop0(){ // core0 (display)
   }
   if (currentTime - _last5s >= 5000) { // 5sec
     _last5s = currentTime;
-    //HEAP_INFO();
   }
 
-  return true; // just in case
+  return true;
 }
 
 bool TimeKeeper::loop1(){ // core1 (player)
@@ -108,7 +106,6 @@ bool TimeKeeper::loop1(){ // core1 (player)
   if (currentTime - _last1s >= 1000) { // 1sec
     pm.on_ticker();
     _last1s = currentTime;
-//#ifndef DUMMYDISPLAY
 #if !defined(DUMMYDISPLAY) || defined(USE_NEXTION)
   #ifdef UPCLOCK_CORE1
     _upClock();
@@ -118,16 +115,16 @@ bool TimeKeeper::loop1(){ // core1 (player)
     _upSDPos();
     _returnPlayer();
     _doAfterWait();
+    _checkAutoTimer();
   }
   if (currentTime - _last2s >= 2000) { // 2sec
     _last2s = currentTime;
   }
 
-  //#ifdef DUMMYDISPLAY
   #if defined(DUMMYDISPLAY) && !defined(USE_NEXTION)
   return true;
   #endif
-  // Sync weather & time
+
   static uint32_t lastWeatherTime = 0;
   if (currentTime - lastWeatherTime >= WEATHER_SYNC_INTERVAL) {
     lastWeatherTime = currentTime;
@@ -140,20 +137,115 @@ bool TimeKeeper::loop1(){ // core1 (player)
   }
   if (!busy && (forceWeather || forceTimeSync) && network.status == CONNECTED) {
     busy = true;
-    //config.setTimeConf();
     xTaskCreatePinnedToCore(
       _syncTask,
       "syncTask",
       SYNC_STACK_SIZE,
-      NULL,           // Params
+      NULL,
       SYNC_TASK_PRIORITY,
-      NULL,           // Descriptor
+      NULL,
       SYNC_TASK_CORE
     );
   }
   
-  return true; // just in case
+  return true;
 }
+
+/// ============================================================
+// Auto On/Off Timer with EEPROM persistence
+// ============================================================
+void TimeKeeper::_checkAutoTimer() {
+  if (!config.store.autoTimerEnabled) return;
+  if (network.status != CONNECTED) return;
+  if (network.timeinfo.tm_year < 100) return;
+
+  char nowTime[8];
+  snprintf(nowTime, sizeof(nowTime), "%02d:%02d",
+           network.timeinfo.tm_hour, network.timeinfo.tm_min);
+
+  uint32_t today = (uint32_t)network.timeinfo.tm_year * 1000u
+                 + (uint32_t)network.timeinfo.tm_yday;
+
+  bool hasStart = (strlen(config.store.autoStartTime) >= 4);
+  bool hasStop  = (strlen(config.store.autoStopTime)  >= 4);
+  const uint8_t activeDays = config.store.autoTimerDays & 0x7F;
+  const int weekday = (network.timeinfo.tm_wday + 6) % 7;
+  const bool todaySelected = (activeDays & (1U << weekday)) != 0;
+
+  // Restore after power-on
+  if (!_restoreChecked) {
+    _restoreChecked = true;
+    if (config.store.autoTimerEnabled && hasStart && hasStop
+        && config.store.autoTimerLastStop > config.store.autoTimerLastStart) {
+      int nowMin   = network.timeinfo.tm_hour * 60 + network.timeinfo.tm_min;
+      int startMin = atoi(config.store.autoStartTime) * 60
+                   + atoi(strchr(config.store.autoStartTime, ':') + 1);
+      int stopMin  = atoi(config.store.autoStopTime) * 60
+                   + atoi(strchr(config.store.autoStopTime, ':') + 1);
+
+      const int previousWeekday = (weekday + 6) % 7;
+      const bool scheduledNow = startMin < stopMin
+          ? todaySelected && nowMin >= startMin && nowMin < stopMin
+          : startMin > stopMin &&
+              ((todaySelected && nowMin >= startMin) ||
+               ((activeDays & (1U << previousWeekday)) != 0 && nowMin < stopMin));
+
+      if (!config.store.autoTimerStopAlways && activeDays
+          && startMin != stopMin && !scheduledNow && player.isRunning()) {
+        Serial.println("##TIMER###: restore after power-on -> STOP");
+        player.sendCommand({PR_STOP, 0});
+      }
+    }
+  }
+
+  // START
+  if (hasStart && todaySelected && strcmp(nowTime, config.store.autoStartTime) == 0
+      && config.store.autoTimerLastStart != today) {
+    
+    // Р’Р·РІРѕРґРёРј С„Р»Р°Рі СЃРµРіРѕРґРЅСЏС€РЅРµРіРѕ РґРЅСЏ РІ РїР°РјСЏС‚Рё РІ Р»СЋР±РѕРј СЃР»СѓС‡Р°Рµ, С‡С‚РѕР±С‹ С‚Р°Р№РјРµСЂ 
+    // РЅРµ РґРѕР»Р±РёР»СЃСЏ РІ СЌС‚Рѕ СѓСЃР»РѕРІРёРµ РєР°Р¶РґСѓСЋ СЃРµРєСѓРЅРґСѓ РЅР° РїСЂРѕС‚СЏР¶РµРЅРёРё С‚РµРєСѓС‰РµР№ РјРёРЅСѓС‚С‹
+    config.saveValue(&config.store.autoTimerLastStart, today, true, true);
+
+    // РџСЂРѕРІРµСЂСЏРµРј: РµСЃР»Рё СЂР°РґРёРѕ СѓР¶Рµ Р·Р°РїСѓС‰РµРЅРѕ Рё РёРіСЂР°РµС‚, С‚Рѕ РїСЂРѕСЃС‚Рѕ РѕС‚РјРµРЅСЏРµРј СЃСЂР°Р±Р°С‚С‹РІР°РЅРёРµ С‚Р°Р№РјРµСЂР°
+    if (player.isRunning()) {
+      Serial.println("##TIMER###: Radio is already running. Timer startup skipped.");
+    } 
+    else {
+      // Р•СЃР»Рё СЂР°РґРёРѕ РјРѕР»С‡Р°Р»Рѕ вЂ” Р·Р°РїСѓСЃРєР°РµРј СЃС‚Р°РЅС†РёСЋ РєР°Рє РѕР±С‹С‡РЅРѕ
+      uint16_t st = config.store.autoTimerStation;
+      if (st == 0) st = config.lastStation();
+      if (st > 0 && st <= config.playlistLength()) {
+        Serial.printf("##TIMER###: START -> station %u, fade-in to %u\n", st, config.store.autoTimerVolume);
+        player.sendCommand({PR_PLAY, st});
+        player.startFadeIn(config.store.autoTimerVolume, 20);
+      }
+    }
+  }
+
+
+  // STOP
+  int stopWeekday = weekday;
+  if (hasStart && hasStop) {
+    int startMin = atoi(config.store.autoStartTime) * 60
+                 + atoi(strchr(config.store.autoStartTime, ':') + 1);
+    int stopMin = atoi(config.store.autoStopTime) * 60
+                + atoi(strchr(config.store.autoStopTime, ':') + 1);
+    if (startMin > stopMin) stopWeekday = (weekday + 6) % 7;
+  }
+  const bool stopDaySelected =
+      (activeDays & (1U << stopWeekday)) != 0;
+  if (hasStop && (config.store.autoTimerStopAlways || stopDaySelected)
+      && strcmp(nowTime, config.store.autoStopTime) == 0
+      && config.store.autoTimerLastStop != today) {
+
+    config.saveValue(&config.store.autoTimerLastStop, today, true, true);
+
+    Serial.println("##TIMER###: STOP");
+    player.sendCommand({PR_STOP, 0});
+  }
+}
+// ============================================================
+
 
 void TimeKeeper::waitAndReturnPlayer(uint8_t time_s){
   _returnPlayerTime = millis()+time_s*1000;
@@ -204,12 +296,8 @@ void TimeKeeper::_upScreensaver(){
   }
   if(config.store.screensaverPlayingEnabled && display.mode()==PLAYER && player.isRunning()){
     config.screensaverPlayingTicks++;
-    if(config.screensaverPlayingTicks > config.store.screensaverPlayingTimeout/*60*/+SCREENSAVERSTARTUPDELAY){	// *******************************
-      if(config.store.screensaverPlayingBlank){
-        display.putRequest(NEWMODE, SCREENBLANK);
-      }else{
-        display.putRequest(NEWMODE, SCREENSAVER);
-      }
+    if(config.screensaverPlayingTicks > config.store.screensaverPlayingTimeout+SCREENSAVERSTARTUPDELAY){
+display.putRequest(NEWMODE, SCREENSAVER);
       config.screensaverPlayingTicks=SCREENSAVERSTARTUPDELAY;
     }
   }
@@ -291,7 +379,6 @@ bool _getWeather() {
         char line[bodyLen+1];
         memcpy(line, bodyStart, bodyLen);
         line[bodyLen] = '\0';
-        /* parse it */
         char *cursor;
         char desc[120], icon[5], porv[10], stanc[50] = {0};
         float tempf, tempfl, wind_speed, gust;
@@ -312,26 +399,23 @@ bool _getWeather() {
         if (cursor) { sscanf(cursor, "\"feels_like\":%f", &tempfl); }else{ Serial.println("##WEATHER###: feels_like not found !"); result=false; }
         cursor = strstr(line, "\"grnd_level\":");
         if (cursor) { sscanf(cursor, "\"grnd_level\":%d", &grnd_level_pr);
-//  Serial.printf("##WEATHER###: press_grnd_level: %d hPa - %d mm \n", grnd_level_pr, (int)(grnd_level_pr / 1.333f));		// Debug
         }else{ Serial.println("##WEATHER###: grnd_level not found ! Use pressure"); }
         cursor = strstr(line, "\"speed\":");
         if (cursor) { sscanf(cursor, "\"speed\":%f", &wind_speed); }else{ Serial.println("##WEATHER###: wind speed not found !"); result=false; }
         cursor = strstr(line, "\"deg\":");
         if (cursor) { sscanf(cursor, "\"deg\":%d", &wind_deg); }else{ Serial.println("##WEATHER###: wind deg not found !"); result=false; }
-        cursor = strstr(line, "\"gust\":");										// Порывы ветра
+        cursor = strstr(line, "\"gust\":");
         if (cursor) { sscanf(cursor, "\"gust\":%f", &gust);
-           itoa((int)gust, porv, 10);						// преобразование gust в текстовую строку (porv="13")
-//  Serial.printf("##WEATHER###: wind gust: %.1f m/s \n", gust);								// Debug
+           itoa((int)gust, porv, 10);
         }else{ Serial.println("##WEATHER###: wind gust not found !"); }
-        cursor = strstr(line, "\"name\":\"");										// Имя метеостанции
+        cursor = strstr(line, "\"name\":\"");
         if (cursor) { sscanf(cursor, "\"name\":\"%49[^\"]", stanc);
-//  Serial.printf("##WEATHER###: name station: \"%s\", name length: %d byte \n", stanc, strlen(stanc));				// Debug
         }else{ Serial.println("##WEATHER###: name station not found !"); }
 
-	if(grnd_level_pr == 0)
-          pressi = (float)press / 1.333f - (float)config.store.grndlevel / 11.0f;	// перевод в мм.рт.ст., ввод в целое число pressi поправки (m) на выс. местности
+        if(grnd_level_pr == 0)
+          pressi = (float)press / 1.333f - (float)config.store.grndlevel / 11.0f;
         else {
-          pressi = (float)grnd_level_pr / 1.333f;	// перевод в мм.рт.ст.
+          pressi = (float)grnd_level_pr / 1.333f;
         }
         press = (int)roundf(pressi);
 
@@ -372,8 +456,8 @@ bool _getWeather() {
       } else {
         Serial.println("##WEATHER###: weather not found !");
       }
-    }, NULL); // <-- client->onData
-  }, NULL); // <-- weatherClient->onConnect
+    }, NULL);
+  }, NULL);
   config.waitConnection();
   if(!weatherClient->connect(host, 80)){
     Serial.println("##WEATHER###: connection failed");
@@ -383,8 +467,6 @@ bool _getWeather() {
   }
 
   return true;
-#endif // if (DSP_MODEL!=DSP_DUMMY || defined(USE_NEXTION)) && !defined(HIDE_WEATHER)
+#endif
   return false;
 }
-
-//******************

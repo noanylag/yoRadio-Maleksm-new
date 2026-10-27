@@ -104,7 +104,7 @@ void setup() {
   if (config.store.smartstart == 1) {
     player.sendCommand({PR_PLAY, config.lastStation()});
   }
-  Audio::audio_info_callback =  audio_info;   // Функция «audio_change» обрабатывается в файле audiohandlers.h.
+  Audio::audio_info_callback =  audio_info;   // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅaudio_changeпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ audiohandlers.h.
   pm.on_end_setup();
 }
 
@@ -117,7 +117,7 @@ void loop() {
     ArduinoOTA.handle();
 #endif
   }
-  loopControls();
+  if (!controlsTaskStarted()) loopControls();
   #ifdef NETSERVER_LOOP1
   netserver.loop();
   #endif
@@ -126,78 +126,163 @@ void loop() {
 /**************************************************************************
 *   Plugin BacklightDown.
 *   Ver.1.1 (Maleksm) for yoRadio 20.04.2026
+*   пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: fader пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ screensaver, пїЅпїЅпїЅ STOPPED,
+*   пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ PLAYING пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ "fader while playing".
+*   пїЅпїЅпїЅпїЅ: faderReset() пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ fader пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
+*   пїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (isBrightening) пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 ***************************************************************************/
 #include <Ticker.h>
 
 #if (BRIGHTNESS_PIN!=255)
   Ticker backlightTicker;
 
-  static uint8_t current_bl = map(config.store.brightness, 0, 100, 0, 255); 	// Текущий уровень яркости
+  static uint8_t current_bl = map(config.store.brightness, 0, 100, 0, 255);
   static bool isFading = false;
+  static bool isBrightening = false;
   static uint32_t lastFaderMillis = 0;
 
-  void tickFader() { 				 /* function tickFader (без тормозов) */
-    if (!isFading) return;
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅfader пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ faderReset() пїЅпїЅ controls.cpp
+  bool faderShouldBeActive = false;
 
-    if (millis() - lastFaderMillis >= 30) {
-      lastFaderMillis = millis();
-      uint8_t target = config.store.fadermin; 		// Цель из конфига (минимум)
+  // Forward declaration: backlightDown() пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ tickFader() пїЅпїЅпїЅпїЅ
+  void backlightDown();
 
+  void tickFader() {
+    if (!isFading && !isBrightening) return;
+    if (millis() - lastFaderMillis < 30) return;
+    lastFaderMillis = millis();
+
+    uint8_t fullBr = map(config.store.brightness, 0, 100, 0, 255);
+
+    // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
+    if (isFading) {
+      uint8_t target = config.store.fadermin;
       if (current_bl == target) {
         isFading = false;
-        return;
-      }
-
-      if (current_bl > target) {
+      } else if (current_bl > target) {
         if (current_bl - target < 2) current_bl = target;
         else current_bl -= 2;
       } else {
-        if (target - current_bl < 2) current_bl = target; 	// На случай, если минимум больше текущей яркости
+        if (target - current_bl < 2) current_bl = target;
         else current_bl += 2;
       }
       analogWrite(BRIGHTNESS_PIN, current_bl);
     }
-  }
 
-  void backlightDown() { 			 /* function Backlight Down */
-    if (!config.store.faderon || network.status == SOFT_AP) return;
-    isFading = true; 				// Просто разрешаем плавное гашение
-  }
-
-  void brightnessOn() {         		/* function Backlight ON */
-    if (!config.store.faderon) return;
-    backlightTicker.detach();
-    isFading = false; 				// Прерываем текущее затухание, если оно шло
-    current_bl = map(config.store.brightness, 0, 100, 0, 255);
-    analogWrite(BRIGHTNESS_PIN, current_bl);
-    backlightTicker.attach(config.store.fadertimeout, backlightDown);
-  }
-
-  void updateFaderState() { 		// Обновление статуса фейдера
-    backlightTicker.detach();
-    isFading = false;
-    if (config.store.faderon) { 		// Если включен — всё останавливаем и зажигаем свет
-      brightnessOn();
-    } else { 					// Если выключен — просто ставим текущую яркость
-      current_bl = map(config.store.brightness, 0, 100, 0, 255);
-      analogWrite(BRIGHTNESS_PIN, current_bl);
-    }
-}
-
-  void yoradio_on_setup() { brightnessOn(); } 		/* Backlight ON for Setup */
-  void player_on_track_change() { brightnessOn(); } 	/* Backlight ON for track change */
-  void player_on_start_play() { brightnessOn(); } 		/* Backlight ON for start play */
-  void player_on_stop_play() { brightnessOn(); } 		/* Backlight ON for stop play */
-  void ctrls_on_loop() { 						/* Backlight ON for reg. operations */
-    tickFader();
-    if(!config.isScreensaver && config.store.faderon && !isFading && current_bl != config.store.fadermin) {
-      static uint32_t prevBlPinMillis;
-      if((display.mode()!=PLAYER) && (millis()-prevBlPinMillis>1000)) {
-        prevBlPinMillis=millis();
-        brightnessOn();
+    // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
+    if (isBrightening) {
+      if (current_bl == fullBr) {
+        isBrightening = false;
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ fader пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        if (faderShouldBeActive) {
+          backlightTicker.attach(config.store.fadertimeout, backlightDown);
+        }
+      } else if (current_bl < fullBr) {
+        if (fullBr - current_bl < 2) current_bl = fullBr;
+        else current_bl += 2;
+        analogWrite(BRIGHTNESS_PIN, current_bl);
+      } else {
+        if (current_bl - fullBr < 2) current_bl = fullBr;
+        else current_bl -= 2;
+        analogWrite(BRIGHTNESS_PIN, current_bl);
       }
     }
   }
+
+  void backlightDown() {
+    if (!config.store.faderon || network.status == SOFT_AP) return;
+    if (isBrightening) return;   // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    isFading = true;
+  }
+
+
+  void brightnessOn() {
+    if (!config.store.faderon) return;
+    backlightTicker.detach();
+    isFading = false;
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (attach пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅ tickFader() пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
+    isBrightening = true;
+  }
+
+  void updateFaderState() {
+    backlightTicker.detach();
+    isFading = false;
+    if (config.store.faderon) {
+      brightnessOn();
+    } else {
+      current_bl = map(config.store.brightness, 0, 100, 0, 255);
+      analogWrite(BRIGHTNESS_PIN, current_bl);
+    }
+  }
+
+  void yoradio_on_setup() {
+    current_bl = map(config.store.brightness, 0, 100, 0, 255);
+    analogWrite(BRIGHTNESS_PIN, current_bl);
+  }
+
+  // === FADER: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ controls.cpp) ===
+  void faderReset() {
+    if (config.store.faderon && faderShouldBeActive) {
+      brightnessOn();
+    }
+  }
+  // === /FADER ===
+
+  void player_on_track_change() {
+    //if (config.isScreensaver ||
+     //   (player.status() == PLAYING && config.store.screensaverPlayingBlank))
+      //brightnessOn();
+	    if (config.isScreensaver) brightnessOn();   // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ screensaver
+
+  }
+  void player_on_start_play() {
+    if (config.isScreensaver || config.store.screensaverPlayingBlank)
+      brightnessOn();
+  }
+  void player_on_stop_play() {
+    if (config.isScreensaver) brightnessOn();
+  }
+
+void ctrls_on_loop() {
+  tickFader();
+
+  static bool prevFaderActive = false;
+  static bool prevScrpb = false;
+  static bool prevScrpe = false;
+  static bool prevScre  = false;
+
+  bool scrpb = config.store.screensaverPlayingBlank;
+  bool scrpe = config.store.screensaverPlayingEnabled;
+  bool scre  = config.store.screensaverEnabled;
+
+  if (scrpb != prevScrpb || scrpe != prevScrpe || scre != prevScre) {
+    prevScrpb = scrpb;
+    prevScrpe = scrpe;
+    prevScre  = scre;
+    brightnessOn();
+    prevFaderActive = true;
+  }
+
+  faderShouldBeActive =
+      config.isScreensaver ||
+      (player.status() == STOPPED) ||
+      (player.status() == PLAYING && scrpb);
+
+  if (faderShouldBeActive && !prevFaderActive) {
+    brightnessOn();
+  }
+  if (!faderShouldBeActive && prevFaderActive) {
+    brightnessOn();
+    backlightTicker.detach();
+  }
+
+  // ? пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅ fader пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+  if (!faderShouldBeActive) {
+    backlightTicker.detach();
+  }
+
+  prevFaderActive = faderShouldBeActive;
+}
 #endif  /*  #if (BRIGHTNESS_PIN!=255) */
 
 /*******************************************************************
@@ -205,64 +290,64 @@ void loop() {
 *   Author: bill-gilbert
 *   Created on: Mar 10.2023     Updated on: Jun 21.2025 (Maleksm)
 
-для 7 сегментного дисплея на TM1637
-поддерживаются сдисплеи с двоеточием и с десятичными точками 00:00 и 0.0.0.0
+пїЅпїЅпїЅ 7 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ TM1637
+пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 00:00 пїЅ 0.0.0.0
 
-- подключение CLK и DIO –  на любые свободные пины , в пределах разумного.
-  GPIO12 не использовать будут проблемы с запуском из-заособенностей ESP32
-  и тем что CLK и DIO притянуты резисторами к плюсу питания.
+- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ CLK пїЅ DIO пїЅ  пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ , пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
+  GPIO12 пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ESP32
+  пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ CLK пїЅ DIO пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 
-- отображается время, номер станции и громкость при изменении
-- уровень сигнала WiFi
--- дополнительно кратковременно отображаются режимы PLAY, STOP
--- при ошибке отображается буква Е и номер станции
+- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+- пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ WiFi
+-- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ PLAY, STOP
+-- пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-никаких библиотек подключать не надо, плагин самодостаточный
+пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-плагин работает без дисплея  #define DSP_DUMMY,
-а так же с любыми дисплеями, проверено с ILI9341, ST7789, NOKIA5110, ST7735, NEXTION
+пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ  #define DSP_DUMMY,
+пїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ ILI9341, ST7789, NOKIA5110, ST7735, NEXTION
 *******************************************************************/
 
 #if (defined(TM_CLK) && defined(TM_DIO))
 #ifndef TM_BRIGHT
-  #define TM_BRIGHT   4 		// яркость индикатора (0-7)
+  #define TM_BRIGHT   4 		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (0-7)
 #endif
 
 #include <WiFi.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-// Буфер дисплея и переменные состояния
-uint8_t bufseg[] = {0x40, 0x3d,  0x3f, 0x40 }; // Начальное сообщение "-GO-"
+// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+uint8_t bufseg[] = {0x40, 0x3d,  0x3f, 0x40 }; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ "-GO-"
 uint8_t mode_inf;
 uint8_t vol_old;
 uint16_t num_old;
 uint16_t num_next;
 uint8_t errors = 0;
 
-// Параметры задач FreeRTOS
-#define STACK_SIZE  1024*2 		/* Размер стека функции */
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ FreeRTOS
+#define STACK_SIZE  1024*2 		/* пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ */
 TaskHandle_t TmTask;
 
-// Параметры станции
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 #define NUMSTAT config.store.lastStation
 #define NUMNEXT display.currentPlItem
 #define VOLUME config.store.volume
 
-// Команды TM1637
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ TM1637
 #define BITDELAY delayMicroseconds(100)
 #define tm_COMM1    0x40
 #define tm_COMM2    0xC0
 #define tm_COMM3    0x80
 
-// Коды символов для 7-сегментного индикатора
+// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ 7-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 const uint8_t digitHEX[] = {
   0x3f, 0x06, 0x5b, 0x4f, 			// 0-3
   0x66, 0x6d, 0x7d, 0x07, 			// 4-7
-  0x7f, 0x6f, 0x00, 0x40  			// 8-9, пробел, -
+  0x7f, 0x6f, 0x00, 0x40  			// 8-9, пїЅпїЅпїЅпїЅпїЅпїЅ, -
 };
 
-// Прототипы функций
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 void tm_init();
 void tm_start();
 void tm_stop();
@@ -278,14 +363,14 @@ void createTmTask();
 void loopTmTask(void * pvParameters);
 void tm1637();
 
-// ================= TM1637 ФУНКЦИИ =================
+// ================= TM1637 пїЅпїЅпїЅпїЅпїЅпїЅпїЅ =================
 void tm_init(){
   pinMode(TM_CLK, INPUT);
   pinMode(TM_DIO, INPUT);
   digitalWrite(TM_CLK, LOW);
   digitalWrite(TM_DIO, LOW);
   uint8_t dispArray[] = {0x6d, 0x78, 0x3f, 0x73};
-  tm_setSegments(dispArray, 4, 0); // Очистка дисплея
+  tm_setSegments(dispArray, 4, 0); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 }
 
 void tm_start(){
@@ -375,7 +460,7 @@ void tm_displayByte(uint8_t bit0, uint8_t bit1, uint8_t bit2, uint8_t bit3){
   tm_setSegments(dispArray, 4, 0);
 }
 
-// ================= ОСНОВНЫЕ ФУНКЦИИ ДИСПЛЕЯ =================
+// ================= пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ =================
 void clock_seg(){
   uint8_t hrs  = network.timeinfo.tm_hour;
   uint8_t mins = network.timeinfo.tm_min;
@@ -387,7 +472,7 @@ void clock_seg(){
   bufseg[2] = digitHEX[mins / 10];
   bufseg[3] = digitHEX[mins % 10];
   p_clk = !p_clk;
-  if (p_clk) bufseg[1] |= (0x80); 			// выкл-вкл  точки
+  if (p_clk) bufseg[1] |= (0x80); 			// пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅ  пїЅпїЅпїЅпїЅпїЅ
   tm_setSegments(bufseg, 4, 0);
 }
 
@@ -396,13 +481,13 @@ void print_seg(float value, uint8_t sym){
 
   uint8_t digits[4];
   value = abs(value);
-  digits[0] = (int)value / 1000; 			// количесто тысяч в числе
-  uint16_t b = (int)digits[0] * 1000; 			// вспомогательная переменная
-  digits[1] = ((int)value - b) / 100; 			// получем количество сотен
-  b += digits[1] * 100; 					// суммируем сотни и тысячи
-  digits[2] = (int)(value - b) / 10; 			// получем десятки
-  b += digits[2] * 10; 					// сумма тысяч, сотен и десятков
-  digits[3] = value - b; 					// получаем количество единиц
+  digits[0] = (int)value / 1000; 			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ
+  uint16_t b = (int)digits[0] * 1000; 			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  digits[1] = ((int)value - b) / 100; 			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+  b += digits[1] * 100; 					// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+  digits[2] = (int)(value - b) / 10; 			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  b += digits[2] * 10; 					// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  digits[3] = value - b; 					// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
   for (uint8_t i = 0; i < 3; i++){
     if (digits[i] == 0) digits[i] = 10;
@@ -421,13 +506,13 @@ void print_rssi(){
   if (value < -99 ) value = -99;
   uint8_t digits[4];
   value = abs(value);
-  digits[0] = (int)value / 1000;        // количесто тысяч в числе
-  uint16_t b = (int)digits[0] * 1000;   // вспомогательная переменная
-  digits[1] = ((int)value - b) / 100;   // получем количество сотен
-  b += digits[1] * 100;                 // суммируем сотни и тысячи
-  digits[2] = (int)(value - b) / 10;    // получем десятки
-  b += digits[2] * 10;                  // сумма тысяч, сотен и десятков
-  digits[3] = value - b;                // получаем количество единиц
+  digits[0] = (int)value / 1000;        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ
+  uint16_t b = (int)digits[0] * 1000;   // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  digits[1] = ((int)value - b) / 100;   // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+  b += digits[1] * 100;                 // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+  digits[2] = (int)(value - b) / 10;    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  b += digits[2] * 10;                  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  digits[3] = value - b;                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
   for (uint8_t i = 0; i < 3; i++) {
     if (digits[i] == 0) digits[i] = 10;
@@ -441,16 +526,16 @@ void print_rssi(){
 }
 */
 
-// ================= УПРАВЛЕНИЕ ЗАДАЧАМИ FreeRTOS =================
+// ================= пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ FreeRTOS =================
 void createTmTask(){
   xTaskCreatePinnedToCore(
-    loopTmTask, 			// Функция задачи
-    "TmTask", 			// Имя задачи
-    STACK_SIZE, 			// Размер стека
-    NULL, 				// Параметры
-    4, 					// Приоритет
-    &TmTask, 			// Дескриптор задачи
-    !xPortGetCoreID() 		// Ядро (0 или 1)
+    loopTmTask, 			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    "TmTask", 			// пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    STACK_SIZE, 			// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+    NULL, 				// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    4, 					// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    &TmTask, 			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    !xPortGetCoreID() 		// пїЅпїЅпїЅпїЅ (0 пїЅпїЅпїЅ 1)
   );
 }
 
@@ -463,14 +548,14 @@ void loopTmTask(void * pvParameters){
    TmTask=NULL;
 }
 
-// ================= ОСНОВНОЙ ЦИКЛ ДИСПЛЕЯ =================
+// ================= пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ =================
 void tm1637(){
    static uint8_t f_vol = 0;
    static uint8_t f_num = 0;
    static uint8_t f_pos = 0;
 
-   if (network.timeinfo.tm_year<100){ 		// Ждем подключения к сети и получение сетевого времени
-//   if (network.status != CONNECTED && network.status != SDREADY){ 		// ждем подключения к сети
+   if (network.timeinfo.tm_year<100){ 		// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+//   if (network.status != CONNECTED && network.status != SDREADY){ 		// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ
     vTaskDelay(200);
     bufseg[0] =  0;   
     bufseg[1] =  0;
@@ -483,11 +568,11 @@ void tm1637(){
     return;
     }
 
-  // Отображение громкости при изменении
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     if (VOLUME != vol_old){
        vol_old = VOLUME;
-       f_vol = 100 * 2; 					// 2 секунды показ громкости
-       print_seg(VOLUME, 0x1c); 			// Символ "v"
+       f_vol = 100 * 2; 					// 2 пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+       print_seg(VOLUME, 0x1c); 			// пїЅпїЅпїЅпїЅпїЅпїЅ "v"
     }
     if (f_vol != 0){
         f_vol--;
@@ -496,11 +581,11 @@ void tm1637(){
         return;  
     }
 
-  // Отображение номера станции при изменении
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     if (NUMSTAT != num_old){
        num_old = NUMSTAT;
-       f_num= 100 * 1; 				// 1 секунда показ станции
-       print_seg(NUMSTAT, 0x58); 		// Символ "c"
+       f_num= 100 * 1; 				// 1 пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+       print_seg(NUMSTAT, 0x58); 		// пїЅпїЅпїЅпїЅпїЅпїЅ "c"
     }
     if (f_num != 0){
        f_num--;
@@ -509,14 +594,14 @@ void tm1637(){
        return;  
     }
 
-  // Режим выбора станции
+  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   if (display.mode() == STATIONS){
     if (NUMNEXT != num_next){
        num_next = NUMNEXT;
 //-----------------------------------
-        print_seg(NUMNEXT, 0x54); 			// Символ "n"
-//        print_seg(NUMSTAT, 0x63); 		// Символ "o"
-//        print_seg(NUMNEXT, 0x58); 		// Символ "c"
+        print_seg(NUMNEXT, 0x54); 			// пїЅпїЅпїЅпїЅпїЅпїЅ "n"
+//        print_seg(NUMSTAT, 0x63); 		// пїЅпїЅпїЅпїЅпїЅпїЅ "o"
+//        print_seg(NUMNEXT, 0x58); 		// пїЅпїЅпїЅпїЅпїЅпїЅ "c"
 //-----------------------------------
     }
        mode_inf = 0;
@@ -524,13 +609,13 @@ void tm1637(){
        return;
   }
 
-  // Режим обновления
+  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   if (display.mode() == UPDATING) {
     info_updating();
     return;
   }
   
-  // Основной режим плеера
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
   if (display.mode() == PLAYER) {
     info_play();
   }
@@ -538,45 +623,45 @@ void tm1637(){
 
 void info_play(){
    static unsigned long lastTime = 0;
-   if (millis() - lastTime < 500) return; 		// полсекунды
+   if (millis() - lastTime < 500) return; 		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
    lastTime = millis();
 
 //-----------ERROR-------------------  
    if (player.status() == ERROR) errors = 1; else  errors = 0;
 /*   if (errors == 1){
-     print_seg(NUMSTAT, 0x79); 			// Символ "E"
+     print_seg(NUMSTAT, 0x79); 			// пїЅпїЅпїЅпїЅпїЅпїЅ "E"
      return;
    }	*/
 
    if (mode_inf>100){
       if (player.status() == STOPPED)
-         tm_displayByte(0x6d,0x78,0x3f,0x73); 	// Надпись "StOP"
+         tm_displayByte(0x6d,0x78,0x3f,0x73); 	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ "StOP"
       if (player.status() == PLAYING)
-         tm_displayByte(0x73,0x38,0x77,0x6e); 	// Надпись "PLAY"
+         tm_displayByte(0x73,0x38,0x77,0x6e); 	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ "PLAY"
       mode_inf++;
       if (mode_inf==103) mode_inf=0;
       return;
    }
 
     if (mode_inf<4){
-       print_seg(NUMSTAT, (errors == 1)?0x79:0x58); 		// 4/2= 2 сек - Номер станции ( "E":"c" )
+       print_seg(NUMSTAT, (errors == 1)?0x79:0x58); 		// 4/2= 2 пїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ( "E":"c" )
        mode_inf++;
        return;
     }
 /*
     if (mode_inf<12){
-    print_rssi(); 						// Значение RSSI
+    print_rssi(); 						// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ RSSI
     mode_inf++;
     return;
     }
 */
     clock_seg();
     mode_inf++;
-    if (mode_inf==18) mode_inf=101; 			// (18-4)/2= 7 секунд - Часы
+    if (mode_inf==18) mode_inf=101; 			// (18-4)/2= 7 пїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅ
 
 }
 
-// ================= ОБРАБОТЧИКИ СОБЫТИЙ ПЛЕЕРА =================
+// ================= пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ =================
 void info_updating(){
    tm_displayByte(0x40, 0x3e, 0x73, 0x40); 		// -UP-
    mode_inf = 0;
@@ -594,17 +679,17 @@ void player_on_stop_play(){
   }
 
 void player_on_station_change(){
-   num_old = 0; 					// Сброс для обновления номера станции
+   num_old = 0; 					// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   }
 
-// ================= ИНИЦИАЛИЗАЦИЯ =================
+// ================= пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ =================
 void yoradio_on_setup(){
    tm_init();
-   tm_bright(TM_BRIGHT); 			// 0...7 яркость
-   tm_setSegments(bufseg, 4, 0); 		// Показываем "-GO-"
+   tm_bright(TM_BRIGHT); 			// 0...7 пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+   tm_setSegments(bufseg, 4, 0); 		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ "-GO-"
 //   Delay(1500);
    vTaskDelay(1500);
-   createTmTask(); 				// Создание задачи FreeRTOS
+   createTmTask(); 				// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ FreeRTOS
    mode_inf = 5;
    vol_old = VOLUME;
    num_old = NUMSTAT;

@@ -8,6 +8,12 @@
 #include "netserver.h"
 #include "../pluginsManager/pluginsManager.h"
 
+// === FADER: сброс таймера при активности пользователя (см. main.cpp) ===
+#if (BRIGHTNESS_PIN!=255)
+  extern void faderReset();
+#endif
+// === /FADER ===
+
 long encOldPosition  = 0;
 long enc2OldPosition  = 0;
 int lpId = -1;
@@ -85,7 +91,25 @@ void IRAM_ATTR readEncoder2ISR()
 }
 #endif
 
+static volatile bool controlsTaskIsRunning = false;
+
+static void controlsTask(void *parameter) {
+  (void)parameter;
+  for (;;) {
+    loopControls();
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+}
+
 void initControls() {
+#if defined(BLUETOOTH_ENABLED) && BLUETOOTH_ENABLED
+  pinMode(BLUETOOTH_PIN, OUTPUT);
+  digitalWrite(BLUETOOTH_PIN, !BLUETOOTH_ACTIVE_LEVEL);
+#if defined(BLUETOOTH_ACTIVITY_PIN) && BLUETOOTH_ACTIVITY_PIN != 255
+  pinMode(BLUETOOTH_ACTIVITY_PIN,
+          BLUETOOTH_ACTIVITY_ACTIVE_LEVEL == HIGH ? INPUT_PULLDOWN : INPUT_PULLUP);
+#endif
+#endif
   
 #if ENC_BTNL!=255
   encoder.begin();
@@ -132,6 +156,15 @@ void initControls() {
   irrecv.setTolerance(config.store.irtlp);
   irrecv.enableIRIn();
 #endif // IR_PIN!=255
+  BaseType_t taskResult = xTaskCreate(controlsTask, "controls", 4096, nullptr, 1, nullptr);
+  controlsTaskIsRunning = taskResult == pdPASS;
+  if (!controlsTaskIsRunning) {
+    Serial.printf("##[ERROR]#\tFailed to create controls task (%d)\n", (int)taskResult);
+  }
+}
+
+bool controlsTaskStarted() {
+  return controlsTaskIsRunning;
 }
 
 void loopControls() {
@@ -169,6 +202,11 @@ void encodersLoop(yoEncoder *enc, bool first){
   int8_t encoderDelta = enc->encoderChanged();
   if (encoderDelta!=0)
   {
+    // === FADER: сброс таймера при вращении энкодера ===
+    #if (BRIGHTNESS_PIN!=255)
+      faderReset();
+    #endif
+    // === /FADER ===
     uint8_t encBtnState = digitalRead(first?ENC_BTNB:ENC2_BTNB);
 #   if defined(DUMMYDISPLAY) && !defined(USE_NEXTION)
     first = first?(first && encBtnState):(!encBtnState);
@@ -235,6 +273,11 @@ void irNumber(uint8_t num) {
 
 void irLoop() {
   if (irrecv.decode(&irResults)) {
+    // === FADER: сброс таймера при любом ИК-событии ===
+    #if (BRIGHTNESS_PIN!=255)
+      faderReset();
+    #endif
+    // === /FADER ===
     if(irResults.value<256) return;
     if (netserver.irRecordEnable) {
       Serial.print(resultToHumanReadableBasic(&irResults));
@@ -256,18 +299,30 @@ void irLoop() {
           break;
         }
     }
-    for(int target=0; target<17; target++){
+    for(int target=0; target<18; target++){
       for(int j=0; j<3; j++){
         if(config.ircodes.irVals[target][j]==irResults.value){
-          if (network.status != CONNECTED && network.status!=SDREADY && target!=IR_AST) return;
-          if(target!=IR_AST && display.mode()==LOST) return;
-          if (display.mode() == SCREENSAVER || display.mode() == SCREENBLANK) {
-            display.putRequest(NEWMODE, PLAYER);
-            return;
+          if (network.status != CONNECTED && network.status!=SDREADY && target!=IR_AST && target!=IR_BLUETOOTH) return;
+          if(target!=IR_AST && target!=IR_BLUETOOTH && display.mode()==LOST) return;
+          
+          // === ИСПРАВЛЕНИЕ АСИНХРОННОГО БАГА СКРИНСЕЙВЕРА ===
+          // Если активен скринсейвер (проверяем по флагу и по режиму дисплея),
+          // мы только отправляем запрос на пробуждение экрана. Любые сопутствующие команды 
+          // полностью блокируются и не прорываются в плеер.
+          if (config.isScreensaver || display.mode() == SCREENSAVER || display.mode() == SCREENBLANK) {
+            if (display.mode() == SCREENSAVER || display.mode() == SCREENBLANK) {
+              display.putRequest(NEWMODE, PLAYER);
+            }
+            irResults.value = 0; // Сбрасываем текущее значение от дребезга
+            return;              // Выходим, прерывая дальнейшую обработку ИК-команды
           }
+          // =================================================
+          if(config.bluetoothActive && target!=IR_BLUETOOTH && target!=IR_UP && target!=IR_DOWN && target!=IR_AST) return;
+
           switch (target){
             case IR_PLAY: {
-                irBlink();
+                if (display.mode() != VOL) irBlink();
+                if(config.bluetoothActive) break;
                 if (display.mode() == NUMBERS) {
                   display.putRequest(NEWMODE, PLAYER);
                   player.sendCommand({PR_PLAY, display.numOfNextStation});
@@ -278,11 +333,11 @@ void irLoop() {
                 break;
               }
             case IR_PREV: {
-                player.prev();
+                if(!config.bluetoothActive) player.prev();
                 break;
               }
             case IR_NEXT: {
-                player.next();
+                if(!config.bluetoothActive) player.next();
                 break;
               }
             case IR_UP: {
@@ -302,6 +357,10 @@ void irLoop() {
                   break;
                 }
                 display.putRequest(NEWMODE, display.mode() == PLAYER ? STATIONS : PLAYER);
+                break;
+              }
+            case IR_BLUETOOTH: {
+                config.toggleBluetooth();
                 break;
               }
             case IR_0: {
@@ -350,7 +409,7 @@ void irLoop() {
                 break;
               }
           } /* switch (target) */
-          target=17;
+          target=18;
           break;
         } /* if(config.ircodes.irVals[target][j]==irResults.value) */
       }   /* for(int j=0; j<3; j++) */
@@ -360,6 +419,11 @@ void irLoop() {
 #endif // if IR_PIN!=255
 
 void onBtnLongPressStart(int id) {
+  // === FADER: сброс таймера при начале долгого нажатия ===
+  #if (BRIGHTNESS_PIN!=255)
+    faderReset();
+  #endif
+  // === /FADER ===
   switch ((controlEvt_e)id) {
     case EVT_BTNLEFT:
     case EVT_BTNRIGHT:
@@ -423,6 +487,11 @@ boolean checklpdelay(int m, unsigned long &tstamp) {
 void onBtnDuringLongPress(int id) {
   if (network.status != CONNECTED && network.status!=SDREADY) return;
   if (checklpdelay(BTN_LONGPRESS_LOOP_DELAY, lpdelay)) {
+    // === FADER: сброс таймера при долгом нажатии ===
+    #if (BRIGHTNESS_PIN!=255)
+      faderReset();
+    #endif
+    // === /FADER ===
     switch ((controlEvt_e)id) {
       case EVT_BTNLEFT: {
           controlsEvent(false);
@@ -478,9 +547,20 @@ void controlsEvent(bool toRight, int8_t volDelta) {
 }
 
 void onBtnClick(int id) {
+  // === FADER: сброс таймера при клике ===
+  #if (BRIGHTNESS_PIN!=255)
+    faderReset();
+  #endif
+  // === /FADER ===
   bool passBnCenter = (controlEvt_e)id==EVT_BTNCENTER || (controlEvt_e)id==EVT_ENCBTNB || (controlEvt_e)id==EVT_ENC2BTNB;
   controlEvt_e btnid = static_cast<controlEvt_e>(id);
   pm.on_btn_click(btnid);
+#if defined(BLUETOOTH_ENABLED) && BLUETOOTH_ENABLED
+  if (btnid == EVT_ENCBTNB && display.mode() == LOST) {
+    config.toggleBluetooth();
+    return;
+  }
+#endif
   if (network.status != CONNECTED && network.status!=SDREADY && (controlEvt_e)id!=EVT_BTNMODE && !passBnCenter) return;
   switch (btnid) {
     case EVT_BTNLEFT: {
@@ -490,6 +570,10 @@ void onBtnClick(int id) {
     case EVT_BTNCENTER:
     case EVT_ENCBTNB:
     case EVT_ENC2BTNB: {
+        if (display.mode() == VOL) {
+          display.putRequest(NEWMODE, PLAYER);
+          break;
+        }
         if (display.mode() == NUMBERS) {
           display.numOfNextStation = 0;
           display.putRequest(NEWMODE, PLAYER);
@@ -502,6 +586,7 @@ void onBtnClick(int id) {
           #ifdef DSP_LCD
             delay(200);
           #endif
+          return; // <--- ДОБАВЛЕНО: Предотвращает ложный STOP при пробуждении кнопкой корпуса
         }
         if (display.mode() == STATIONS) {
           display.putRequest(NEWMODE, PLAYER);
@@ -539,6 +624,7 @@ void onBtnClick(int id) {
                 player.next();
               }
             }else{
+
               display.putRequest(NEWMODE, STATIONS);
             }
           }
@@ -559,10 +645,21 @@ void onBtnClick(int id) {
 }
 
 void onBtnDoubleClick(int id) {
+  // === FADER: сброс таймера при двойном клике ===
+  #if (BRIGHTNESS_PIN!=255)
+    faderReset();
+  #endif
+  // === /FADER ===
   if (display.mode() == SCREENSAVER || display.mode() == SCREENBLANK) {
     display.putRequest(NEWMODE, PLAYER);
     return;
   }
+  if ((controlEvt_e)id != EVT_ENCBTNB) return;
+#if defined(BLUETOOTH_ENABLED) && BLUETOOTH_ENABLED
+  if (display.mode() == PLAYER || display.mode() == BLUETOOTH || display.mode() == LOST) {
+    config.cycleSource();
+  }
+#else
   switch ((controlEvt_e)id) {
     case EVT_BTNLEFT: {
         if (display.mode() != PLAYER) return;
@@ -586,6 +683,7 @@ void onBtnDoubleClick(int id) {
     default:
         break;
   }
+#endif
 }
 void setIRTolerance(uint8_t tl){
   config.saveValue(&config.store.irtlp, tl);

@@ -10,10 +10,10 @@ class  psFrameBuffer : public Adafruit_GFX {
     ~psFrameBuffer(){ freeBuffer(); }
     bool ready() { return _ready; }
     
-    void freeBuffer(){
+    void freeBuffer(bool clearDisplay=true){
       _ready = false;
       if(buffer) {
-        _dspl->fillRect(_ll, _tt, _ww, _hh, _bgcolor);
+        if(clearDisplay) _dspl->fillRect(_ll, _tt, _ww, _hh, _bgcolor);
         free(buffer);
       }
       buffer = nullptr;
@@ -23,9 +23,9 @@ class  psFrameBuffer : public Adafruit_GFX {
       _createBuffer();
       return _ready;
     }
-    void move(int16_t l, int16_t t, int16_t w, int16_t h){
+    void move(int16_t l, int16_t t, int16_t w, int16_t h, bool clearOld=true){
       _ll = l; _tt = t; _ww = w; _hh = h;
-      freeBuffer();
+      freeBuffer(clearOld);
       _createBuffer();
     }
     void drawPixel( int16_t x, int16_t y, uint16_t color){

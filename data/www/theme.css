@@ -1,8 +1,16 @@
 :root {
---main-bg-color:        #010101;
+--main-bg-color:        #00000069;
+
+body {
+  background-color: var(--main-bg-color);
+  background-image: url('playlist.jpg'); /* замените на путь к вашей картинке */
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
 --main-text-color:      #cccccc;
 --main-hl-color:        #ffffff;
---odd-bg-color:         #272727;
+--odd-bg-color:         #27272782;
 --accent-color:         #e3d25f;
 --accent-dark:          #ad9838;
 --accent-text-color:    #000000;
@@ -11,7 +19,22 @@
 --logo-red:             #ff0000;
 --logo-shadow:          #a89c46;
 --playlist-hover:       #323232;
+#playlist {
+  background-image: url('pleditor.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: var(--main-bg-color); /* на случай, если картинка не загрузится */
+}
+#pleditorwrap {
+  background-image: url('playlist.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: var(--main-bg-color); /* на случай, если картинка не загрузится */
+}
+
 --section-gradient:     #111111;
 --section-border:       #555555;
---heapbar-color:        #3ea220;
 }
+

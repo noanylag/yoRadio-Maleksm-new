@@ -6,7 +6,7 @@ class SDManager : public SDFS {
     bool ready;
   public:
     SDManager(FSImplPtr impl) : SDFS(impl) {}
-    bool start();
+    bool start(uint8_t maxAttempts = 4);
     void stop();
     bool cardPresent();
     void listSD(File &plSDfile, File &plSDindex, const char * dirname, uint8_t levels);

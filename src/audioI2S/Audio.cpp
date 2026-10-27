@@ -777,7 +777,9 @@ bool Audio::connecttohost(const char* host, const char* user, const char* pwd) {
     }
 
     timestamp = millis();
-    m_client->setTimeout(m_f_ssl ? m_timeout_ms_ssl : m_timeout_ms);
+    const uint16_t connectTimeoutMs = m_f_ssl ? m_timeout_ms_ssl : m_timeout_ms;
+    m_client->setTimeout(connectTimeoutMs);
+    m_client->setConnectionTimeout(connectTimeoutMs);
 
     info(*this, evt_info, "connect to: \"{}\" on port {} path \"/{}\"", hwoe.get(), port, path.get());
     res = m_client->connect(hwoe.get(), port);

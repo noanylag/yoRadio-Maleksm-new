@@ -26,11 +26,9 @@
 #define MIN_MALLOC 24112
 #endif
 #ifndef NSQ_SEND_DELAY
-  //#define NSQ_SEND_DELAY       portMAX_DELAY
   #define NSQ_SEND_DELAY       pdMS_TO_TICKS(300)
 #endif
 #ifndef NS_QUEUE_TICKS
-  //#define NS_QUEUE_TICKS pdMS_TO_TICKS(2)
   #define NS_QUEUE_TICKS 0
 #endif
 
@@ -40,9 +38,9 @@
 #define DBGVB( ... )
 #endif
 
-extern void updateFaderState(); 			// For Plugin BacklightDown
+extern void updateFaderState();
 
-//#define CORS_DEBUG //Enable CORS policy: 'Access-Control-Allow-Origin' (for testing)
+//#define CORS_DEBUG
 
 NetServer netserver;
 
@@ -56,11 +54,9 @@ void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventTyp
 
 bool  shouldReboot  = false;
 #ifdef MQTT_ROOT_TOPIC
-//Ticker mqttplaylistticker;
 bool  mqttplaylistblock = false;
 void mqttplaylistSend() {
   mqttplaylistblock = true;
-//  mqttplaylistticker.detach();
   mqttPublishPlaylist();
   mqttplaylistblock = false;
 }
@@ -90,8 +86,6 @@ bool NetServer::begin(bool quiet) {
   DefaultHeaders::Instance().addHeader(F("Access-Control-Allow-Headers"), F("content-type"));
 #endif
   webserver.begin();
-  //if(strlen(config.store.mdnsname)>0)
-  //  MDNS.begin(config.store.mdnsname);
   websocket.onEvent(onWsEvent);
   webserver.addHandler(&websocket);
   if(!quiet) Serial.println("done");
@@ -119,7 +113,6 @@ size_t NetServer::chunkedHtmlPageCallback(uint8_t* buffer, size_t maxLen, size_t
   #endif
   size_t canread = (needread > maxLen) ? maxLen : needread;
   DBGVB("[%s] seek to %d in %s and read %d bytes with maxLen=%d", __func__, index, netserver.chunkedPathBuffer, canread, maxLen);
-  //netserver.loop();
   requiredfile.seek(index, SeekSet);
   requiredfile.read(buffer, canread);
   index += canread;
@@ -174,7 +167,6 @@ void NetServer::processQueue(){
       case PLAYLISTSAVED:   {
         #ifdef USE_SD
         if(config.getMode()==PM_SDCARD) {
-        //  config.indexSDPlaylist();
           config.initSDPlaylist();
         }
         #endif
@@ -186,11 +178,9 @@ void NetServer::processQueue(){
       }
       case GETACTIVE: {
           bool dbgact = false, nxtn=false;
-          //String act = F("\"group_wifi\",");
           nsBuf[0]='\0';
           APPEND_GROUP("group_wifi");
           if (network.status == CONNECTED) {
-                                                                //act += F("\"group_system\",");
                                                                 APPEND_GROUP("group_system");
             if (BRIGHTNESS_PIN != 255 || DSP_CAN_FLIPPED || DSP_MODEL == DSP_NOKIA5110 || dbgact)    APPEND_GROUP("group_display");
           #ifdef USE_NEXTION
@@ -211,6 +201,7 @@ void NetServer::processQueue(){
                                                                 APPEND_GROUP("group_timezone");
             if (SHOW_WEATHER || dbgact)                         APPEND_GROUP("group_weather");
                                                                 APPEND_GROUP("group_controls");
+																APPEND_GROUP("group_timer");
             if (ENC_BTNL != 255 || ENC2_BTNL != 255 || dbgact)  APPEND_GROUP("group_encoder");
             if (IR_PIN != 255 || dbgact)                        APPEND_GROUP("group_ir");
             if (!psramInit())                                   APPEND_GROUP("group_buffer");
@@ -246,11 +237,11 @@ void NetServer::processQueue(){
                                   config.store.vumeter, 
                                   config.store.softapdelay,
                                   config.vuThreshold,
-                                  config.store.vufadespeed, 				// **************************************
+                                  config.store.vufadespeed,
                                   config.store.mdnsname,
-                                  config.store.batteryon, 				// **************************************
-                                  config.store.voltageon, 				// **************************************
-                                  config.store.batoffset, 				// **************************************
+                                  config.store.batteryon,
+                                  config.store.voltageon,
+                                  config.store.batoffset,
                                   config.ipToStr(WiFi.localIP()),
                                   config.store.abuff,
                                   config.store.telnet,
@@ -271,9 +262,9 @@ void NetServer::processQueue(){
                                   config.store.screensaverPlayingEnabled,
                                   config.store.screensaverPlayingTimeout,
                                   config.store.screensaverPlayingBlank,
-                                  config.store.faderon, 				// **************************************
-                                  config.store.fadermin, 				// **************************************
-                                  config.store.fadertimeout); 			// **************************************
+                                  config.store.faderon,
+                                  config.store.fadermin,
+                                  config.store.fadertimeout);
                                   break;
       case GETTIMEZONE:   sprintf (wsBuf, "{\"tzh\":%d,\"tzm\":%d,\"sntp1\":\"%s\",\"sntp2\":\"%s\", \"timeint\":%d,\"timeintrtc\":%d}", 
                                   config.store.tzHour, 
@@ -287,15 +278,22 @@ void NetServer::processQueue(){
                                   config.store.showweather, 
                                   config.store.weatherlat, 
                                   config.store.weatherlon, 
-                                  config.store.grndlevel, 					// *******************************
+                                  config.store.grndlevel,
                                   config.store.weatherkey, 
                                   config.store.weatherSyncInterval);
                                   break;
-      case GETCONTROLS:   sprintf (wsBuf, "{\"vols\":%d,\"enca\":%d,\"irtl\":%d,\"skipup\":%d}", 
-                                  config.store.volsteps, 
-                                  config.store.encacc, 
+    case GETCONTROLS:   sprintf (wsBuf, "{\"vols\":%d,\"enca\":%d,\"irtl\":%d,\"skipup\":%d,\"autoStartTime\":\"%s\",\"autoStopTime\":\"%s\",\"autoTimerEnabled\":%d,\"autoTimerStation\":%d,\"autoTimerVolume\":%d,\"autoTimerDays\":%u,\"autoTimerStopAlways\":%d}",
+                                  config.store.volsteps,
+                                  config.store.encacc,
                                   config.store.irtlp,
-                                  config.store.skipPlaylistUpDown); 
+                                  config.store.skipPlaylistUpDown,
+                                  config.store.autoStartTime[0] ? config.store.autoStartTime : "",
+                                  config.store.autoStopTime[0] ? config.store.autoStopTime : "",
+                                  config.store.autoTimerEnabled,
+                                  config.store.autoTimerStation,
+                                  config.store.autoTimerVolume,
+                                  (unsigned)(config.store.autoTimerDays & 0x7F),
+                                  config.store.autoTimerStopAlways);
                                   break;
       case DSPON:         sprintf (wsBuf, "{\"dspontrue\":%d}", 1); break;
       case STATION:       requestOnChange(STATIONNAME, clientId); requestOnChange(ITEM, clientId); break;
@@ -303,9 +301,9 @@ void NetServer::processQueue(){
       case ITEM:          sprintf (wsBuf, "{\"current\": %d}", config.lastStation()); break;
       case TITLE:         sprintf (wsBuf, "{\"payload\":[{\"id\":\"meta\", \"value\": \"%s\"}]}", config.station.title); telnet.printf("##CLI.META#: %s\n> ", config.station.title); break;
       case VOLUME:        sprintf (wsBuf, "{\"payload\":[{\"id\":\"volume\", \"value\": %d}]}", config.store.volume); telnet.printf("##CLI.VOL#: %d\n", config.store.volume); break;
-      case NRSSI:         sprintf (wsBuf, "{\"payload\":[{\"id\":\"rssi\", \"value\": %d}, {\"id\":\"heap\", \"value\": %d}]}", rssi, (player.isRunning() && config.store.audioinfo)?(int)(100*player.inBufferFilled()/playerBufMax):0); /*rssi = 255;*/ break;
+      case NRSSI:         sprintf (wsBuf, "{\"payload\":[{\"id\":\"rssi\", \"value\": %d}, {\"id\":\"heap\", \"value\": %d}]}", rssi, (player.isRunning() && config.store.audioinfo)?(int)(100*player.inBufferFilled()/playerBufMax):0); break;
       case SDPOS:         sprintf (wsBuf, "{\"sdpos\": %lu,\"sdend\": %lu,\"sdtpos\": %lu,\"sdtend\": %lu}", 
-                                  player.getAudioFilePosition(), 				// *****************************
+                                  player.getAudioFilePosition(),
                                   player.getFileSize(), 
                                   player.getAudioCurrentTime(), 
                                   player.getAudioFileDuration()); 
@@ -317,7 +315,16 @@ void NetServer::processQueue(){
       case EQUALIZER:     sprintf (wsBuf, "{\"payload\":[{\"id\":\"bass\", \"value\": %d}, {\"id\": \"middle\", \"value\": %d}, {\"id\": \"trebble\", \"value\": %d}]}", config.store.bass, config.store.middle, config.store.trebble); break;
       case BALANCE:       sprintf (wsBuf, "{\"payload\":[{\"id\": \"balance\", \"value\": %d}]}", config.store.balance); break;
       case SDINIT:        sprintf (wsBuf, "{\"sdinit\": %d}", SDC_CS!=255); break;
-      case GETPLAYERMODE: sprintf (wsBuf, "{\"playermode\": \"%s\"}", config.getMode()==PM_SDCARD?"modesd":"modeweb"); break;
+      case GETPLAYERMODE:
+#if defined(BLUETOOTH_ENABLED) && BLUETOOTH_ENABLED
+        if(config.bluetoothActive)
+          sprintf (wsBuf, "{\"playermode\":\"modebt\",\"playmode\":%d}", config.getMode());
+        else
+          sprintf (wsBuf, "{\"playermode\":\"%s\"}", config.getMode()==PM_SDCARD?"modesd":"modeweb");
+#else
+        sprintf (wsBuf, "{\"playermode\": \"%s\"}", config.getMode()==PM_SDCARD?"modesd":"modeweb");
+#endif
+        break;
       #ifdef USE_SD
         case CHANGEMODE:    config.changeMode(config.newConfigMode); return; break;
       #endif
@@ -347,7 +354,6 @@ void NetServer::loop() {
     case IMWIFI:  config.saveWifi(); importRequest = IMDONE; break;
     default:      break;
   }
-  //processQueue();
 }
 
 #if IR_PIN!=255
@@ -374,25 +380,41 @@ void NetServer::onWsMessage(void *arg, uint8_t *data, size_t len, uint8_t client
         return;
       }
 
-      if (strcmp(_wscmd, "batteryon") == 0) { 							// On/Off Battery
+      // === FIX: Ğ¾Ğ±Ñ€Ğ°Ğ±Ğ¾Ñ‚ĞºĞ° ĞºĞ¾Ğ¼Ğ°Ğ½Ğ´ Ğ¾ĞºĞ½Ğ° timezone (tzh, tzm, sntp1, sntp2) ===
+      if (strcmp(_wscmd, "tzh") == 0) {
+        config.saveValue(&config.store.tzHour, (int8_t)atoi(_wsval), false);
+        return;
+      }
+      if (strcmp(_wscmd, "tzm") == 0) {
+        config.saveValue(&config.store.tzMin, (int8_t)atoi(_wsval), true);
+        return;
+      }
+      if (strcmp(_wscmd, "sntp1") == 0) {
+        config.setSntpOne(_wsval);
+        return;
+      }
+      if (strcmp(_wscmd, "sntp2") == 0) {
+        config.setSntpTwo(_wsval);
+        return;
+      }
+      // === /FIX ===
+
+      if (strcmp(_wscmd, "batteryon") == 0) {
         config.saveValue(&config.store.batteryon, (bool)atoi(_wsval), true);
-//Serial.printf("###################config Battery Status: %s\n", (config.store.batteryon)?"ON":"OFF");			// Êîíòğîëü
         displayMode_e m = display.mode();
         display.putRequest(NEWMODE, CLEAR);
         display.putRequest(NEWMODE, m);
         return;
       }
-      if (strcmp(_wscmd, "voltageon") == 0) { 							// On/Of Voltage
+      if (strcmp(_wscmd, "voltageon") == 0) {
         config.saveValue(&config.store.voltageon, (bool)atoi(_wsval), true);
-//Serial.printf("###################config Battery Voltage: %s\n", (config.store.voltageon)?"ON":"OFF");			// Êîíòğîëü
         displayMode_e m = display.mode();
         display.putRequest(NEWMODE, CLEAR);
         display.putRequest(NEWMODE, m);
         return;
       }
       if (strcmp(_wscmd, "batoffset") == 0) {
-        config.saveValue(&config.store.batoffset, (float)atof(_wsval), true); 		// Set Voltage offset
-//Serial.printf("######################### Battery offset: %.3f\n", (float)atof(_wsval));						// Êîíòğîëü
+        config.saveValue(&config.store.batoffset, (float)atof(_wsval), true);
         return;
       }
 
@@ -413,50 +435,106 @@ void NetServer::onWsMessage(void *arg, uint8_t *data, size_t len, uint8_t client
       }
       if (strcmp(_wscmd, "submitplaylistdone") == 0) {
 #ifdef MQTT_ROOT_TOPIC
-        //mqttplaylistticker.attach(5, mqttplaylistSend);
         timekeeper.waitAndDo(5, mqttplaylistSend);
 #endif
         if (player.isRunning()) player.sendCommand({PR_PLAY, -config.lastStation()});
         return;
       }
 
-      if (strcmp(_wscmd, "vufadespeed") == 0) { 					// Set VU faderspeed
+      if (strcmp(_wscmd, "vufadespeed") == 0) {
         config.saveValue(&config.store.vufadespeed, (uint8_t)atoi(_wsval), true);
         netserver.requestOnChange(GETSYSTEM, clientId);
         return;
       }
 
-      if (strcmp(_wscmd, "faderon") == 0) { 						// On/Off Fader
+      if (strcmp(_wscmd, "faderon") == 0) {
         #if (BRIGHTNESS_PIN != 255)
           config.saveValue(&config.store.faderon, (bool)atoi(_wsval), true);
-//Serial.printf("###################config Fader Status: %s\n", (config.store.faderon)?"ON":"OFF");		// Êîíòğîëü
           updateFaderState();
         #endif
         return;
       }
-      if (strcmp(_wscmd, "fadermin") == 0) { 						// Set Fader minimum
+      if (strcmp(_wscmd, "fadermin") == 0) {
         #if (BRIGHTNESS_PIN != 255)
           config.saveValue(&config.store.fadermin, (uint8_t)atoi(_wsval), true);
-//Serial.printf("######################### Set Fader min: %d\n", config.store.fadermin);			// Êîíòğîëü
           updateFaderState();
         #endif
         return;
       }
-      if (strcmp(_wscmd, "fadertimeout") == 0) { 					// Set Fader timeout
+      if (strcmp(_wscmd, "fadertimeout") == 0) {
         #if (BRIGHTNESS_PIN != 255)
           config.saveValue(&config.store.fadertimeout, (uint16_t)atoi(_wsval), true);
-//Serial.printf("######################### Set Fader Time: %d\n", config.store.fadertimeout);		// Êîíòğîëü
           updateFaderState();
         #endif
         return;
       }
 
-      if (strcmp(_wscmd, "grndl") == 0) { 							 // Set Ground Level
+      if (strcmp(_wscmd, "grndl") == 0) {
         config.saveValue(&config.store.grndlevel, (uint16_t)atoi(_wsval), true);
-Serial.printf("######################### New ground level: %d\n", config.store.grndlevel);			// Êîíòğîëü
+        Serial.printf("######################### New ground level: %d\n", config.store.grndlevel);
         return;
       }
 
+      if (strcmp(_wscmd, "autoStartTime") == 0) {
+        strlcpy(config.store.autoStartTime, _wsval, sizeof(config.store.autoStartTime));
+        config.saveValue(config.store.autoStartTime, config.store.autoStartTime,
+                         sizeof(config.store.autoStartTime), true, true);
+        return;
+      }
+
+      if (strcmp(_wscmd, "autoStopTime") == 0) {
+        strlcpy(config.store.autoStopTime, _wsval, sizeof(config.store.autoStopTime));
+        config.saveValue(config.store.autoStopTime, config.store.autoStopTime,
+                         sizeof(config.store.autoStopTime), true, true);
+        return;
+      }
+
+      if (strcmp(_wscmd, "autoTimerEnabled") == 0) {
+        config.saveValue(&config.store.autoTimerEnabled, (bool)atoi(_wsval), true, true);
+        return;
+      }
+      if (strcmp(_wscmd, "autoTimerStation") == 0) {
+        config.saveValue(&config.store.autoTimerStation, (uint16_t)atoi(_wsval), true, true);
+        return;
+      }
+
+      if (strcmp(_wscmd, "autoTimerVolume") == 0) {
+        config.saveValue(&config.store.autoTimerVolume, (uint8_t)atoi(_wsval), true, true);
+        return;
+      }
+      if (strcmp(_wscmd, "autoTimerDays") == 0) {
+        config.saveValue(&config.store.autoTimerDays, (uint8_t)(atoi(_wsval) & 0x7F), true, true);
+        return;
+      }
+      if (strcmp(_wscmd, "autoTimerStopAlways") == 0) {
+        config.saveValue(&config.store.autoTimerStopAlways, (bool)atoi(_wsval), true, true);
+        return;
+      }
+
+      // === ÑĞ±Ñ€Ğ¾Ñ Ñ„Ğ»Ğ°Ğ³Ğ¾Ğ² ÑÑ€Ğ°Ğ±Ğ°Ñ‚Ñ‹Ğ²Ğ°Ğ½Ğ¸Ñ Ñ‚Ğ°Ğ¹Ğ¼ĞµÑ€Ğ° (Ğ¿Ñ€Ğ¸ Apply) ===
+      if (strcmp(_wscmd, "autoTimerLastStart") == 0) {
+        config.saveValue(&config.store.autoTimerLastStart, (uint32_t)strtoul(_wsval, NULL, 10), true, true);
+        return;
+      }
+      if (strcmp(_wscmd, "autoTimerLastStop") == 0) {
+        config.saveValue(&config.store.autoTimerLastStop, (uint32_t)strtoul(_wsval, NULL, 10), true, true);
+        return;
+      }
+
+      if (strcmp(_wscmd, "reset") == 0) {
+        if (strcmp(_wsval, "timer") == 0) {
+          config.saveValue(config.store.autoStartTime, "", sizeof(config.store.autoStartTime), true, true);
+          config.saveValue(config.store.autoStopTime,  "", sizeof(config.store.autoStopTime),  true, true);
+          config.saveValue(&config.store.autoTimerEnabled,   false,       true, true);
+          config.saveValue(&config.store.autoTimerStation,   (uint16_t)0, true, true);
+          config.saveValue(&config.store.autoTimerVolume,    (uint8_t)12, true, true);
+          config.saveValue(&config.store.autoTimerLastStart, (uint32_t)0, true, true);
+          config.saveValue(&config.store.autoTimerLastStop,  (uint32_t)0, true, true);
+          config.saveValue(&config.store.autoTimerDays,      (uint8_t)0x7F, true, true);
+          config.saveValue(&config.store.autoTimerStopAlways, true, true, true);
+        }
+        return;
+      }
       if(cmd.exec(_wscmd, _wsval, clientId)){
         return;
       }
@@ -480,7 +558,6 @@ int NetServer::_readPlaylistLine(File &file, char * line, size_t size){
 
 bool NetServer::importPlaylist() {
   if(config.getMode()==PM_SDCARD) return false;
-  //player.sendCommand({PR_STOP, 0});
   File tempfile = SPIFFS.open(TMP_PATH, "r");
   if (!tempfile) {
     return false;
@@ -534,7 +611,6 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
   if(request->url()=="/upload"){
     if (!index) {
       if(filename!="tempwifi.csv"){
-        //player.sendCommand({PR_STOP, 0});
         if(SPIFFS.exists(PLAYLIST_PATH)) SPIFFS.remove(PLAYLIST_PATH);
         if(SPIFFS.exists(INDEX_PATH)) SPIFFS.remove(INDEX_PATH);
         if(SPIFFS.exists(PLAYLIST_SD_PATH)) SPIFFS.remove(PLAYLIST_SD_PATH);
@@ -579,7 +655,7 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
         request->send(200, "text/html", updateError());
       }
     }
-  }else{ // "/webboard"
+  }else{
     DBGVB("File: %s, size:%u bytes, index: %u, final: %s\n", filename.c_str(), len, index, final?"true":"false");
     if (!index) {
       player.sendCommand({PR_STOP, 0});
@@ -599,7 +675,7 @@ void handleUpload(AsyncWebServerRequest *request, String filename, size_t index,
 
 void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
   switch (type) {
-    case WS_EVT_CONNECT: /*netserver.requestOnChange(STARTUP, client->id()); */if (config.store.audioinfo) Serial.printf("[WEBSOCKET] client #%lu connected from %s\n", client->id(), config.ipToStr(client->remoteIP())); break;
+    case WS_EVT_CONNECT: if (config.store.audioinfo) Serial.printf("[WEBSOCKET] client #%lu connected from %s\n", client->id(), config.ipToStr(client->remoteIP())); break;
     case WS_EVT_DISCONNECT: if (config.store.audioinfo) Serial.printf("[WEBSOCKET] client #%lu disconnected\n", client->id()); break;
     case WS_EVT_DATA: netserver.onWsMessage(arg, data, len, client->id()); break;
     case WS_EVT_PONG:
@@ -637,12 +713,12 @@ void handleNotFound(AsyncWebServerRequest * request) {
         netserver.chunkedHtmlPage("application/octet-stream", request, request->url().c_str());
       }
       return;
-    }// if (strcmp(request->url().c_str(), PLAYLIST_PATH) == 0 || 
-  }// if (request->method() == HTTP_GET)
+    }
+  }
   
   if (request->method() == HTTP_POST) {
-    if(request->url()=="/webboard"){ request->redirect("/"); return; } // <--post files from /data/www
-    if(request->url()=="/upload"){ // <--upload playlist.csv or wifi.csv
+    if(request->url()=="/webboard"){ request->redirect("/"); return; }
+    if(request->url()=="/upload"){
       if (request->hasParam("plfile", true, true)) {
         netserver.importRequest = IMPL;
         request->send(200);
@@ -654,26 +730,31 @@ void handleNotFound(AsyncWebServerRequest * request) {
       }
       return;
     }
-    if(request->url()=="/update"){ // <--upload firmware
+    if(request->url()=="/update"){
       shouldReboot = !Update.hasError();
       AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", shouldReboot ? "OK" : updateError());
       response->addHeader("Connection", "close");
       request->send(response);
       return;
     }
-  }// if (request->method() == HTTP_POST)
+  }
   
   if (request->url() == "/favicon.ico") {
     request->send(200, "image/x-icon", "data:,");
     return;
   }
   if (request->url() == "/variables.js") {
-    sprintf (netserver.nsBuf, "var yoVersion='%s';\nvar formAction='%s';\nvar playMode='%s';\n", YOVERSION, (network.status == CONNECTED && !config.emptyFS)?"webboard":"", (network.status == CONNECTED)?"player":"ap");
+    sprintf (netserver.nsBuf, "var yoVersion='%s';\nvar formAction='%s';\nvar playMode='%s';\nvar bluetoothEnabled=%s;\n", YOVERSION, (network.status == CONNECTED && !config.emptyFS)?"webboard":"", (network.status == CONNECTED)?"player":"ap",
+#if defined(BLUETOOTH_ENABLED) && BLUETOOTH_ENABLED
+             "true"
+#else
+             "false"
+#endif
+    );
     request->send(200, "text/html", netserver.nsBuf);
     return;
   }
   if (strcmp(request->url().c_str(), "/settings.html") == 0 || strcmp(request->url().c_str(), "/update.html") == 0 || strcmp(request->url().c_str(), "/ir.html") == 0){
-    //request->send_P(200, "text/html", index_html);
     AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_html);
     response->addHeader("Cache-Control","max-age=31536000");
     request->send(response);
@@ -707,7 +788,7 @@ void handleIndex(AsyncWebServerRequest * request) {
     Serial.println(request->url());
     request->send(404, "text/plain", "Not found");
     return;
-  } // end if(config.emptyFS)
+  }
 #if defined(HTTP_USER) && defined(HTTP_PASS)
   if(network.status == CONNECTED)
     if (!request->authenticate(HTTP_USER, HTTP_PASS)) {
@@ -719,7 +800,6 @@ void handleIndex(AsyncWebServerRequest * request) {
       AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", index_html);
       response->addHeader("Cache-Control","max-age=31536000");
       request->send(response);
-      //request->send_P(200, "text/html", index_html); 
     } else request->redirect("/settings.html");
     return;
   }

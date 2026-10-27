@@ -15,11 +15,12 @@
 CommandHandler cmd;
 
 bool CommandHandler::exec(const char *command, const char *value, uint8_t cid) {
-  if (strEquals(command, "start"))    { player.sendCommand({PR_PLAY, config.lastStation()}); return true; }
-  if (strEquals(command, "stop"))     { player.sendCommand({PR_STOP, 0}); return true; }
-  if (strEquals(command, "toggle"))   { player.toggle(); return true; }
-  if (strEquals(command, "prev"))     { player.prev(); return true; }
-  if (strEquals(command, "next"))     { player.next(); return true; }
+  if (strEquals(command, "start"))    { if(!config.bluetoothActive) player.sendCommand({PR_PLAY, config.lastStation()}); return true; }
+  if (strEquals(command, "stop"))     { if(!config.bluetoothActive) player.sendCommand({PR_STOP, 0}); return true; }
+  if (strEquals(command, "toggle"))   { if(!config.bluetoothActive) player.toggle(); return true; }
+  if (strEquals(command, "bluetooth")){ config.toggleBluetooth(); return true; }
+  if (strEquals(command, "prev"))     { if(!config.bluetoothActive) player.prev(); return true; }
+  if (strEquals(command, "next"))     { if(!config.bluetoothActive) player.next(); return true; }
   if (strEquals(command, "volm"))     { player.stepVol(false); return true; }
   if (strEquals(command, "volp"))     { player.stepVol(true); return true; }
 #ifdef USE_SD
@@ -32,7 +33,7 @@ bool CommandHandler::exec(const char *command, const char *value, uint8_t cid) {
     if (id < 1) id = 1;
     uint16_t cs = config.playlistLength();
     if (id > cs) id = cs;
-    player.sendCommand({PR_PLAY, id});
+    if(!config.bluetoothActive) player.sendCommand({PR_PLAY, id});
     return true;
   }
   if (strEquals(command, "vol")){
@@ -123,8 +124,4 @@ bool CommandHandler::exec(const char *command, const char *value, uint8_t cid) {
   
   return false;
 }
-
-
-
-
 

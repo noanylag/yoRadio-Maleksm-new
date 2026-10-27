@@ -34,6 +34,13 @@ class Player: public Audio {
     uint32_t    _resumeFilePos;
     plStatus_e  _status;
     char        _plError[PLERR_LN];
+    // === fade-in ===
+    bool        _fadeActive;
+    uint8_t     _fadeTarget;
+    uint8_t     _fadeCurrent;
+    uint32_t    _fadeLastTick;
+	uint32_t    _fadeStartTick;
+    uint16_t    _fadeIntervalMs;
   private:
     void _stop(bool alreadyStopped = false);
     void _play(uint16_t stationId);
@@ -51,6 +58,7 @@ class Player: public Audio {
     Player();
     void init();
     void loop();
+
     void initHeaders(const char *file);
     void setError();
     void setError(const char *e);
@@ -71,6 +79,10 @@ class Player: public Audio {
     void stopInfo();
     void setOutputPins(bool isPlaying);
     void setResumeFilePos(uint32_t pos) { _resumeFilePos = pos; }
+    // === fade-in ===
+    void startFadeIn(uint8_t target, uint16_t durationSec = 20);
+    void cancelFadeIn();
+    bool isFading() { return _fadeActive; }
 };
 
 extern Player player;

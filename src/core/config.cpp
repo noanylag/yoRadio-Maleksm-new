@@ -57,7 +57,6 @@ void Config::init() {
   newConfigMode = 0;
   isScreensaver = false;
   memset(tmpBuf, 0, BUFLEN);
-  //bootInfo();
 #if RTCSUPPORTED
   _rtcFound = false;
   BOOTLOG("RTC begin(SDA=%d,SCL=%d)", RTC_SDA, RTC_SCL);
@@ -79,13 +78,27 @@ void Config::init() {
     SDSPI.begin(SD_SPIPINS); // SCK, MISO, MOSI
   #endif
 #endif
+
+  // --- читаем конфиг из EEPROM ---
   eepromRead(EEPROM_START, store);
-  bootInfo(); // https://github.com/e2002/yoradio/pull/149
-  if (store.config_set != 4262) {
-    setDefaults();
+  bootInfo();
+
+  // --- диагностика ---
+  BOOTLOG("sizeof(config_t)=%u, EEPROM_START+sizeof=%u, EEPROM_SIZE=%u",
+          (unsigned)sizeof(config_t),
+          (unsigned)(EEPROM_START + sizeof(config_t)),
+          (unsigned)EEPROM_SIZE);
+  BOOTLOG("config_set=0x%04X (need 0x10A6), version=%u",
+          store.config_set, store.version);
+
+  // --- если подпись/версия не валидны — сбрасываем и ФИКСИРУЕМ в EEPROM ---
+  if (store.config_set != 4262 || store.version < 1 || store.version > CONFIG_VERSION) {
+    BOOTLOG("Config invalid, applying defaults");
+    setDefaults();               // setDefaults сам делает EEPROM.put + commit
   }
-  if(store.version>CONFIG_VERSION) store.version=1;
-  while(store.version!=CONFIG_VERSION) _setupVersion();
+
+  while(store.version != CONFIG_VERSION) _setupVersion();
+
   BOOTLOG("CONFIG_VERSION\t%d", store.version);
   store.play_mode = store.play_mode & 0b11;
   if(store.play_mode>1) store.play_mode=PM_WEB;
@@ -129,30 +142,59 @@ void Config::_setupVersion(){
       saveValue(&store.abuff, (uint16_t)(VS1053_CS==255?7:10));
       saveValue(&store.telnet, true);
       saveValue(&store.watchdog, true);
-      saveValue(&store.timeSyncInterval, (uint16_t)60);    //min
-      saveValue(&store.timeSyncIntervalRTC, (uint16_t)24); //hours
-      saveValue(&store.weatherSyncInterval, (uint16_t)30); // min
-    default:
+      saveValue(&store.timeSyncInterval, (uint16_t)60);
+      saveValue(&store.timeSyncIntervalRTC, (uint16_t)24);
+      saveValue(&store.weatherSyncInterval, (uint16_t)30);
+      break;
+    case 5:
+      if (store.autoStartTime[0] == '\0') {
+        saveValue(store.autoStartTime, "", sizeof(store.autoStartTime));
+      }
+      if (store.autoStopTime[0] == '\0') {
+        saveValue(store.autoStopTime, "", sizeof(store.autoStopTime));
+      }
+      break;
+    case 6:
+      saveValue(&store.autoTimerEnabled, false);
+      saveValue(&store.autoTimerStation, (uint16_t)0);
+      break;
+    case 7:
+      saveValue(&store.autoTimerLastStart, (uint32_t)0);
+      saveValue(&store.autoTimerLastStop,  (uint32_t)0);
+      break;
+    case 8:
+      saveValue(&store.autoTimerVolume, (uint8_t)12);
+      break;
+    case 9:
+      saveValue(&store.autoTimerDays, (uint8_t)0x7F);
+      break;
+    case 10:
+      saveValue(&store.autoTimerStopAlways, true);
       break;
   }
   currentVersion++;
   saveValue(&store.version, currentVersion);
 }
 
-void Config::changeMode(int newmode){
+void Config::changeMode(int newmode, uint8_t sdAttempts){
 #ifdef USE_SD
+  bool wasBluetooth = false;
+#if defined(BLUETOOTH_ENABLED) && BLUETOOTH_ENABLED
+  wasBluetooth = bluetoothActive;
+  if(wasBluetooth) setBluetoothMode(false);
+#endif
   bool pir = player.isRunning();
   if(SDC_CS==255) return;
   if(getMode()==PM_SDCARD) {
-    sdResumePos = player.getAudioFilePosition();					// *******************************
+    sdResumePos = player.getAudioFilePosition();
   }
-  if(network.status==SOFT_AP || display.mode()==LOST){
+  if(network.status==SOFT_AP || (display.mode()==LOST && newmode!=PM_WEB && sdman.ready)){
     saveValue(&store.play_mode, static_cast<uint8_t>(PM_SDCARD));
     delay(50);
     ESP.restart();
   }
   if(!sdman.ready && newmode!=PM_WEB) {
-    if(!sdman.start()){
+    if(!sdman.start(sdAttempts)){
       Serial.println("##[ERROR]#\tSD Not Found");
       netserver.requestOnChange(GETPLAYERMODE, 0);
       sdman.stop();
@@ -177,39 +219,83 @@ void Config::changeMode(int newmode){
     delay(50);
   }
   if(getMode()==PM_WEB) {
-    if(network.status==SDREADY) ESP.restart();
+    if(network.status==SDREADY && sdman.ready) ESP.restart();
     sdman.stop();
   }
   if(!_bootDone) return;
   initPlaylistMode();
   if (pir) player.sendCommand({PR_PLAY, getMode()==PM_WEB?store.lastStation:store.lastSdStation});
   netserver.resetQueue();
-  //netserver.requestOnChange(GETPLAYERMODE, 0);
   netserver.requestOnChange(GETINDEX, 0);
-  //netserver.requestOnChange(GETMODE, 0);
- // netserver.requestOnChange(CHANGEMODE, 0);
   display.resetQueue();
   display.putRequest(NEWMODE, PLAYER);
   display.putRequest(NEWSTATION);
 #endif
 }
 
+void Config::setBluetoothMode(bool active){
+#if defined(BLUETOOTH_ENABLED) && BLUETOOTH_ENABLED
+  if(bluetoothActive == active) return;
+  if(active) player.sendCommand({PR_STOP, 0});
+  bluetoothActive = active;
+  digitalWrite(BLUETOOTH_PIN, active ? BLUETOOTH_ACTIVE_LEVEL : !BLUETOOTH_ACTIVE_LEVEL);
+  display.resetQueue();
+  display.putRequest(NEWMODE, active ? BLUETOOTH : PLAYER);
+  netserver.requestOnChange(GETPLAYERMODE, 0);
+#else
+  (void)active;
+#endif
+}
+
+void Config::toggleBluetooth(){
+#if defined(BLUETOOTH_ENABLED) && BLUETOOTH_ENABLED
+  if(!bluetoothActive){
+    setBluetoothMode(true);
+    return;
+  }
+  setBluetoothMode(false);
+#ifdef USE_SD
+  if(getMode() != PM_WEB && SDC_CS != 255 && sdman.ready) changeMode(PM_WEB);
+#endif
+  display.putRequest(NEWMODE, PLAYER);
+  netserver.requestOnChange(GETPLAYERMODE, 0);
+#endif
+}
+
+void Config::cycleSource(){
+#if defined(BLUETOOTH_ENABLED) && BLUETOOTH_ENABLED
+  if(bluetoothActive){
+    toggleBluetooth();
+    return;
+  }
+#ifdef USE_SD
+  if(getMode() == PM_WEB){
+    changeMode(PM_SDCARD, 2);
+    if(getMode() == PM_WEB) toggleBluetooth();
+    return;
+  }
+#endif
+  toggleBluetooth();
+#else
+#ifdef USE_SD
+  changeMode();
+#endif
+#endif
+}
+
 void Config::initSDPlaylist() {
 #ifdef USE_SD
-  //store.countStation = 0;
   bool doIndex = !sdman.exists(INDEX_SD_PATH);
   if(doIndex) sdman.indexSDPlaylist();
   if (SDPLFS()->exists(INDEX_SD_PATH)) {
     File index = SDPLFS()->open(INDEX_SD_PATH, "r");
-    //store.countStation = index.size() / 4;
     if(doIndex){
       lastStation(_randomStation());
       sdResumePos = 0;
     }
     index.close();
-    //saveValue(&store.countStation, store.countStation, true, true);
   }
-#endif //#ifdef USE_SD
+#endif
 }
 
 bool Config::spiffsCleanup(){
@@ -233,12 +319,20 @@ char * Config::ipToStr(IPAddress ip){
   return ipBuf;
 }
 bool Config::prepareForPlaying(uint16_t stationId){
-  setDspOn(1);
+  #if BRIGHTNESS_PIN!=255
+    if (!store.faderon) {
+      setDspOn(1);            // мгновенно, если fader выключен
+    } else {
+      display.wakeup();       // только разбудить, яркость — через fader
+    }
+  #else
+    setDspOn(1);
+  #endif
   vuThreshold = 0;
   screensaverTicks=SCREENSAVERSTARTUPDELAY;
   screensaverPlayingTicks=SCREENSAVERSTARTUPDELAY;
   if(getMode()!=PM_SDCARD) {
-    display.putRequest(PSTOP);
+    display.putRequest(PSTOP, 1);
   }
   
   if(!loadStation(stationId)) return false;
@@ -263,8 +357,7 @@ void Config::configPostPlaying(uint16_t stationId){
   }
   if(store.smartstart!=2) setSmartStart(1);
   netserver.requestOnChange(MODE, 0);
-  //display.putRequest(NEWMODE, PLAYER);
-  display.putRequest(PSTART);
+  display.putRequest(PSTART, 1);
 }
 void Config::initPlaylistMode(){
   uint16_t _lastStation = 0;
@@ -294,7 +387,7 @@ void Config::initPlaylistMode(){
       Serial.println("done");
       _lastStation = store.lastStation;
     }
-  #else //ifdef USE_SD
+  #else
     store.play_mode=PM_WEB;
     _lastStation = store.lastStation;
   #endif
@@ -378,17 +471,18 @@ template <class T> int Config::eepromWrite(int ee, const T& value) {
 
 template <class T> int Config::eepromRead(int ee, T& value) {
   uint8_t* p = (uint8_t*)(void*)&value;
-  int i;;
+  int i;
   for (i = 0; i < sizeof(value); i++)
     *p++ = EEPROM.read(ee++);
   return i;
 }
 
 void Config::reset(){
-  setDefaults();
+  setDefaults();      // setDefaults сам делает EEPROM.put + commit
   delay(500);
   ESP.restart();
 }
+
 void Config::enableScreensaver(bool val){
   saveValue(&store.screensaverEnabled, val);
 #ifndef DSP_LCD
@@ -427,6 +521,8 @@ void Config::setScreensaverPlayingBlank(bool val){
   display.putRequest(NEWMODE, PLAYER);
 #endif
 }
+
+// === FIX: setSntpOne сохраняет значение ВСЕГДА (в т.ч. пустое) ===
 void Config::setSntpOne(const char *val){
   bool tzdone = false;
   if (strlen(val) > 0 && strlen(store.sntp2) > 0) {
@@ -438,9 +534,26 @@ void Config::setSntpOne(const char *val){
   }
   if (tzdone) {
     timekeeper.forceTimeSync = true;
-    saveValue(config.store.sntp1, val, 35);
   }
+  saveValue(config.store.sntp1, val, 35);
 }
+
+// === FIX: новый сеттер для второго NTP-сервера ===
+void Config::setSntpTwo(const char *val){
+  bool tzdone = false;
+  if (strlen(val) > 0 && strlen(store.sntp1) > 0) {
+    configTime(store.tzHour * 3600 + store.tzMin * 60, getTimezoneOffset(), store.sntp1, val);
+    tzdone = true;
+  } else if (strlen(val) > 0) {
+    configTime(store.tzHour * 3600 + store.tzMin * 60, getTimezoneOffset(), val);
+    tzdone = true;
+  }
+  if (tzdone) {
+    timekeeper.forceTimeSync = true;
+  }
+  saveValue(config.store.sntp2, val, 35);
+}
+
 void Config::setShowweather(bool val){
   config.saveValue(&config.store.showweather, val);
   timekeeper.forceWeather = true;
@@ -458,7 +571,7 @@ void Config::setSDpos(uint32_t val){
       player.setResumeFilePos(val-player.sd_min);
       player.sendCommand({PR_PLAY, config.store.lastSdStation});
     }else{
-      player.setAudioFilePosition(val-player.sd_min);					// *******************************
+      player.setAudioFilePosition(val-player.sd_min);
     }
   }
 }
@@ -503,9 +616,9 @@ void Config::resetSystem(const char *val, uint8_t clientId){
     saveValue(&store.screensaverPlayingEnabled, false);
     saveValue(&store.screensaverPlayingTimeout, (uint16_t)20);
     saveValue(&store.screensaverPlayingBlank, false);
-    saveValue(&store.faderon, false);						// ******************************************
-    saveValue(&store.fadermin, (uint8_t)2);				// ******************************************
-    saveValue(&store.fadertimeout, (uint16_t)60);			// ******************************************
+    saveValue(&store.faderon, false);
+    saveValue(&store.fadermin, (uint8_t)2);
+    saveValue(&store.fadertimeout, (uint16_t)60);
     display.putRequest(NEWMODE, CLEAR); display.putRequest(NEWMODE, PLAYER);
     netserver.requestOnChange(GETSCREEN, clientId);
     return;
@@ -526,10 +639,9 @@ void Config::resetSystem(const char *val, uint8_t clientId){
     saveValue(&store.showweather, false, false);
     saveValue(store.weatherlat, "55.7512", 10, false);
     saveValue(store.weatherlon, "37.6184", 10, false);
-    saveValue(&store.grndlevel, (uint16_t)GRND_HEIGHT, false);	// ******************************************
+    saveValue(&store.grndlevel, (uint16_t)GRND_HEIGHT, false);
     saveValue(store.weatherkey, "", WEATHERKEY_LENGTH);
     saveValue(&store.weatherSyncInterval, (uint16_t)30);
-    //network.trueWeather=false;
     display.putRequest(NEWMODE, CLEAR); display.putRequest(NEWMODE, PLAYER);
     netserver.requestOnChange(GETWEATHER, clientId);
     return;
@@ -549,8 +661,6 @@ void Config::resetSystem(const char *val, uint8_t clientId){
     return;
   }
 }
-
-
 
 void Config::setDefaults() {
   store.config_set = 4262;
@@ -579,8 +689,8 @@ void Config::setDefaults() {
   store.dspon=true;
   store.brightness=100;
   store.contrast=55;
-  strlcpy(store.sntp1,"ntp1.ntp-servers.net", 35);
-  strlcpy(store.sntp2,"2.ru.pool.ntp.org", 35);
+  strlcpy(store.sntp1,"ntp1.time.in.ua", 35);
+  strlcpy(store.sntp2,"time.google.com", 35);
   store.showweather=false;
   strlcpy(store.weatherlat,"55.7512", 10);
   strlcpy(store.weatherlon,"37.6184", 10);
@@ -614,10 +724,12 @@ void Config::setDefaults() {
   store.abuff = VS1053_CS==255?7:10;
   store.telnet = true;
   store.watchdog = true;
-  store.timeSyncInterval = 60;    //min
-  store.timeSyncIntervalRTC = 24; //hour
-  store.weatherSyncInterval = 30; //min
- 								// ***** Added ****************************
+  store.timeSyncInterval = 60;
+  store.timeSyncIntervalRTC = 24;
+  store.weatherSyncInterval = 30;
+  strlcpy(store.autoStartTime, "", sizeof(store.autoStartTime));
+  strlcpy(store.autoStopTime, "", sizeof(store.autoStopTime));
+
   store.vufadespeed = 8;
   #ifdef GRND_HEIGHT
     store.grndlevel = GRND_HEIGHT;
@@ -659,8 +771,18 @@ void Config::setDefaults() {
     store.fadermin = 0;
     store.fadertimeout = 0;
   #endif
- 								// **************************************
-  eepromWrite(EEPROM_START, store);
+
+  store.autoTimerEnabled   = false;
+  store.autoTimerStation   = 0;
+  store.autoTimerVolume    = 12;
+  store.autoTimerLastStart = 0;
+  store.autoTimerLastStop  = 0;
+  store.autoTimerDays      = 0x7F;
+  store.autoTimerStopAlways = true;
+
+  // --- ВАЖНО: фиксируем дефолты в EEPROM ---
+  EEPROM.put(EEPROM_START, store);
+  EEPROM.commit();
 }
 
 void Config::setTimezone(int8_t tzh, int8_t tzm) {
@@ -673,7 +795,7 @@ void Config::setTimezoneOffset(uint16_t tzo) {
 }
 
 uint16_t Config::getTimezoneOffset() {
-  return 0; // TODO
+  return 0;
 }
 
 void Config::setSnuffle(bool sn){
@@ -710,12 +832,12 @@ void Config::setSmartStart(uint8_t ss) {
   saveValue(&store.smartstart, ss);
 }
 
-void Config::setVuFadespeed(uint8_t vufs) { 					// *****************************************
-    saveValue(&store.vufadespeed, vufs); 
+void Config::setVuFadespeed(uint8_t vufs) {
+    saveValue(&store.vufadespeed, vufs);
 }
 
-void Config::setGRNDLevel(uint16_t grndl) { 					// *****************************************
-    saveValue(&store.grndlevel, grndl, true); 
+void Config::setGRNDLevel(uint16_t grndl) {
+    saveValue(&store.grndlevel, grndl, true);
 }
 
 void Config::setBalance(int8_t balance) {
@@ -773,15 +895,7 @@ void Config::indexPlaylist() {
 }
 
 void Config::initPlaylist() {
-  //store.countStation = 0;
   if (!SPIFFS.exists(INDEX_PATH)) indexPlaylist();
-
-  /*if (SPIFFS.exists(INDEX_PATH)) {
-    File index = SPIFFS.open(INDEX_PATH, "r");
-    store.countStation = index.size() / 4;
-    index.close();
-    saveValue(&store.countStation, store.countStation, true, true);
-  }*/
 }
 uint16_t Config::playlistLength(){
   uint16_t out = 0;
@@ -926,7 +1040,6 @@ bool Config::parseWsCommand(const char* line, char* cmd, char* val, uint8_t cSiz
   if (tmpe == NULL) return false;
   memset(cmd, 0, cSize);
   strlcpy(cmd, line, tmpe - line + 1);
-  //if (strlen(tmpe + 1) == 0) return false;
   memset(val, 0, cSize);
   strlcpy(val, tmpe + 1, strlen(line) - strlen(cmd) + 1);
   return true;
@@ -1084,7 +1197,6 @@ void Config::bootInfo() {
   }
   BOOTLOG("chip:\t\tmodel: %s | rev: %d | id: %lu | cores: %d | psram: %lu", ESP.getChipModel(), ESP.getChipRevision(), chipId, ESP.getChipCores(), ESP.getPsramSize());
     #ifdef ARDUINO_ESP32S3_DEV
-//      BOOTLOG("display:\tmodel: %d, (CS-%d, DC-%d, RST-%d, SPI-%s)", DSP_MODEL, TFT_CS, TFT_DC, TFT_RST, DSP_SSPI?"SSPI, MOSI-35, SCLK-36":"FSPI, MOSI-11, SCLK-12");
       BOOTLOG("display:\tmodel: %d, (CS-%d, DC-%d, RST-%d, SPI-%s)", DSP_MODEL, TFT_CS, TFT_DC, TFT_RST,  "FSPI, MOSI-11, SCLK-12");
     #else
       BOOTLOG("display:\tmodel: %d, (CS-%d, DC-%d, RST-%d, SPI-%s)", DSP_MODEL, TFT_CS, TFT_DC, TFT_RST, DSP_HSPI?"HSPI":"VSPI, MOSI-11, SCLK-12");
@@ -1093,12 +1205,9 @@ void Config::bootInfo() {
     BOOTLOG("audio:\t\t%s (DOUT-%d, BCLK-%d, LRC-%d)\tVersion %s", "I2S", I2S_DOUT, I2S_BCLK, I2S_LRC, I2SVER);
   }else{
     #ifdef ARDUINO_ESP32S3_DEV
-//        BOOTLOG("audio:\t\t%s (CS-%d, DCS-%d, DREQ-%d, RST-%d, SPI-%s)  Version %s", "VS1053", VS1053_CS, VS1053_DCS, VS1053_DREQ, VS1053_RST, VS_SSPI?"SubSPI":"FSPI", I2SVER);
         BOOTLOG("audio:\t\t%s (CS-%d, DCS-%d, DREQ-%d, RST-%d, SPI-%s)  Version %s", "VS1053", VS1053_CS, VS1053_DCS, VS1053_DREQ, VS1053_RST, "FSPI", I2SVER);
-//        BOOTLOG("audio:\t\t%s (CS-%d, DCS-%d, DREQ-%d, RST-%d, SPI-%s, MOSI-%d, MISO-%d, SCK-%d)", "VS1053", VS1053_CS, VS1053_DCS, VS1053_DREQ, VS1053_RST, VS_SSPI?"SubSPI":"FSPI", mosi_pin, miso_pin, sclk_pin);
     #else
         BOOTLOG("audio:\t\t%s (CS-%d, DCS-%d, DREQ-%d, RST-%d, SPI-%s)  Version %s", "VS1053", VS1053_CS, VS1053_DCS, VS1053_DREQ, VS1053_RST, VS_HSPI?"HSPI":"VSPI", I2SVER);
-//        BOOTLOG("audio:\t\t%s (CS-%d, DCS-%d, DREQ-%d, RST-%d, SPI-%s, MOSI-%d, MISO-%d, SCK-%d)", "VS1053", VS1053_CS, VS1053_DCS, VS1053_DREQ, VS1053_RST, VS_HSPI?"HSPI":"VSPI", mosi_pin, miso_pin, sclk_pin);
     #endif
   }
   BOOTLOG("audioinfo:\t%s", store.audioinfo?"true":"false");
@@ -1115,4 +1224,3 @@ void Config::bootInfo() {
   BOOTLOG("battery:\t%s", (config.store.batteryon)?"ON":"OFF");
   BOOTLOG("------------------------------------------------");
 }
-

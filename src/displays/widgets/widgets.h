@@ -159,6 +159,7 @@ class VuWidget: public Widget {
     using Widget::init;
     void init(WidgetConfig wconf, VUBandsConfig bands, uint16_t vumaxcolor, uint16_t vumincolor, uint16_t bgcolor);
     void loop();
+    void clearArea();
   protected:
     #if !defined(DSP_LCD) && !defined(DSP_OLED)
       Canvas *_canvas;
@@ -172,10 +173,15 @@ class VuWidget: public Widget {
 class NumWidget: public TextWidget {
   public:
     using Widget::init;
+    ~NumWidget();
     void init(WidgetConfig wconf, uint16_t buffsize, bool uppercase, uint16_t fgcolor, uint16_t bgcolor);
     void setText(const char* txt);
     void setText(int val, const char *format);
   protected:
+#ifdef PSFBUFFER
+    psFrameBuffer* _fb = nullptr;
+    uint16_t _fbLeft = 0;
+#endif
     void _getBounds();
     void _draw();
 };
@@ -201,22 +207,56 @@ class ProgressWidget: public TextWidget {
     bool _checkDelay(int m, uint32_t &tstamp);
 };
 
+class BluetoothWidget: public Widget {
+  public:
+    void init(uint16_t fgcolor, uint16_t bgcolor);
+    void loop() override;
+    void resetActivityBlink();
+  protected:
+    void _draw();
+  private:
+    void setBackgroundVisible(bool visible);
+    bool _backgroundVisible = true;
+    bool _activityBlinking = false;
+    uint32_t _activityStart = 0;
+};
+
 class ClockWidget: public Widget {
   public:
     using Widget::init;
     void init(WidgetConfig wconf, uint16_t fgcolor, uint16_t bgcolor);
     void draw(bool force=false);
+    void clearDate();
     uint8_t textsize(){ return _config.textsize; }
     void clear(){ _clearClock(); }
     inline uint16_t dateSize(){ return _space+ _dateheight; }
     inline uint16_t clockWidth(){ return _clockwidth; }
+
+    // ==== ДОБАВЛЕНО ====
+    // Смена позиции часов БЕЗ вызова Widget::moveTo(), а значит без _clear()/_reset()/_draw().
+    // Нужно, чтобы не инвертировать лишний раз поле dots в ClockWidget::_printClock()
+    // (иначе мигание двоеточия ускоряется в разы).
+    // При первом вызове сохраняет исходную позицию в _backMove, чтобы moveBack()
+    // корректно восстановил положение часов при выходе из скринсейвера.
+    inline void setPositionNoRedraw(uint16_t left, uint16_t top){
+      if(!_moved){
+        _backMove.x     = _config.left;
+        _backMove.y     = _config.top;
+        _backMove.width = _width;
+        _moved = true;
+      }
+      _clockleft  = left;
+      _config.top = top;
+    }
+    // ===================
+
   private:
   #ifndef DSP_LCD
     Adafruit_GFX &getRealDsp();
   #endif
   protected:
     char  _timebuffer[20]="00:00";
-    char _tmp[30], _datebuf[30];
+    char _tmp[30], _datebuf[30] = "";
     uint8_t _superfont;
     uint16_t _clockleft, _clockwidth, _timewidth, _dotsleft, _linesleft;
     uint8_t  _clockheight, _timeheight, _dateheight, _space;
@@ -236,6 +276,7 @@ class ClockWidget: public Widget {
     void _begin();
 };
 
+
 class BitrateWidget: public Widget {
   public:
     BitrateWidget() {}
@@ -245,6 +286,8 @@ class BitrateWidget: public Widget {
     void init(BitrateConfig bconf, uint16_t fgcolor, uint16_t bgcolor);
     void setBitrate(uint16_t bitrate);
     void setFormat(BitrateFormat format);
+    void _reset() override; // <--- ПЕРЕНЕСИТЕ СЮДА (в секцию public)
+
   protected:
     BitrateFormat _format;
     char _buf[6];
@@ -254,6 +297,8 @@ class BitrateWidget: public Widget {
     void _clear();
     void _charSize(uint8_t textsize, uint8_t& width, uint16_t& height);
 };
+
+
 
 class PlayListWidget: public Widget {
   public:
@@ -274,7 +319,3 @@ class PlayListWidget: public Widget {
 
 #endif
 #endif
-
-
-
-

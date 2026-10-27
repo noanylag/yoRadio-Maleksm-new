@@ -7,7 +7,7 @@
 #include <EEPROM.h>
 #include "../displays/widgets/widgetsconfig.h" //BitrateFormat
 
-#define EEPROM_SIZE       768
+#define EEPROM_SIZE       2048
 #define EEPROM_START      500
 #define EEPROM_START_IR   0
 #define EEPROM_START_2    10
@@ -30,7 +30,7 @@
   #define ESP_ARDUINO_3 1
 #endif
 
-#define CONFIG_VERSION  5
+#define CONFIG_VERSION  11
 
 enum playMode_e      : uint8_t  { PM_WEB=0, PM_SDCARD=1 };
 
@@ -129,20 +129,30 @@ struct config_t
   bool      screensaverPlayingBlank;
   char      mdnsname[24];
   bool      skipPlaylistUpDown;
-  uint8_t   vufadespeed;				// ******************************************
-  uint16_t   grndlevel;				// ******************************************
-  bool   batteryon;					// ******************************************
-  bool   voltageon;					// ******************************************
-  float   batoffset;					// ******************************************
-  bool   faderon;					// ******************************************
-  uint8_t   fadermin;					// ******************************************
-  uint16_t   fadertimeout;				// ******************************************
+  uint8_t   vufadespeed;
+  uint16_t  grndlevel;
+  bool      batteryon;
+  bool      voltageon;
+  float     batoffset;
+  bool      faderon;
+  uint8_t   fadermin;
+  uint16_t  fadertimeout;
   uint16_t  abuff;
   bool      telnet;
   bool      watchdog;
   uint16_t  timeSyncInterval;
   uint16_t  timeSyncIntervalRTC;
   uint16_t  weatherSyncInterval;
+
+  char      autoStartTime[8];
+  char      autoStopTime[8];
+  bool      autoTimerEnabled;
+  uint16_t  autoTimerStation;
+  uint8_t   autoTimerVolume;
+  uint32_t  autoTimerLastStart;
+  uint32_t  autoTimerLastStop;
+  uint8_t   autoTimerDays;
+  bool      autoTimerStopAlways;
 };
 
 #if IR_PIN!=255
@@ -183,6 +193,7 @@ class Config {
     uint8_t ssidsCount;
     uint16_t sleepfor;
     uint32_t sdResumePos;
+    bool bluetoothActive = false;
     bool     emptyFS;
     uint16_t vuThreshold;
     uint16_t screensaverTicks;
@@ -194,9 +205,8 @@ class Config {
     char       ipBuf[16];
     char _stationBuf[BUFLEN/2];
   public:
-    uint16_t grndlevel; 				// *******************************************
+    uint16_t grndlevel;
     Config() {};
-    //void save();
 #if IR_PIN!=255
     void saveIR();
 #endif
@@ -226,7 +236,9 @@ class Config {
     void initPlaylist();
     void indexPlaylist();
     void initSDPlaylist();
-    void changeMode(int newmode=-1);
+    void changeMode(int newmode=-1, uint8_t sdAttempts=4);
+    void toggleBluetooth();
+    void cycleSource();
     uint16_t playlistLength();
     uint16_t lastStation(){
       return getMode()==PM_WEB?store.lastStation:store.lastSdStation;
@@ -245,7 +257,7 @@ class Config {
     void bootInfo();
     void doSleepW();
     void setSnuffle(bool sn);
-    uint8_t getMode() { return store.play_mode/* & 0b11*/; }
+    uint8_t getMode() { return store.play_mode; }
     void initPlaylistMode();
     void reset();
     void enableScreensaver(bool val);
@@ -255,6 +267,8 @@ class Config {
     void setScreensaverPlayingTimeout(uint16_t val);
     void setScreensaverPlayingBlank(bool val);
     void setSntpOne(const char *val);
+    // === FIX: добавлен сеттер для второго NTP-сервера ===
+    void setSntpTwo(const char *val);
     void setShowweather(bool val);
     void setWeatherKey(const char *val);
     void setSDpos(uint32_t val);
@@ -262,8 +276,8 @@ class Config {
     void setIrBtn(int val);
 #endif
     void resetSystem(const char *val, uint8_t clientId);
-    void setVuFadespeed(uint8_t vufs); 					// *******************************************
-    void setGRNDLevel(uint16_t grndl); 					// *******************************************
+    void setVuFadespeed(uint8_t vufs);
+    void setGRNDLevel(uint16_t grndl);
     bool spiffsCleanup();
     void waitConnection();
     char * ipToStr(IPAddress ip);
@@ -271,28 +285,38 @@ class Config {
     void configPostPlaying(uint16_t stationId);
     FS* SDPLFS(){ return _SDplaylistFS; }
     bool isRTCFound(){ return _rtcFound; };
-    template <typename T>
-    size_t getAddr(const T *field) const {
-      return (size_t)((const uint8_t *)field - (const uint8_t *)&store) + EEPROM_START;
+
+    // ------------------------------------------------------------------
+    //  Сохранение конфигурации: пишем всю структуру store целиком.
+    //  Это устраняет зависимость от смещений полей и гарантирует,
+    //  что сохранены все поля, включая autoTimer* и sntp*.
+    // ------------------------------------------------------------------
+    void saveConfig() {
+      EEPROM.put(EEPROM_START, store);
+      EEPROM.commit();
     }
+
     template <typename T>
     void saveValue(T *field, const T &value, bool commit=true, bool force=false){
       if(*field == value && !force) return;
       *field = value;
-      size_t address = getAddr(field);
-      EEPROM.put(address, value);
-      if(commit)
-        EEPROM.commit();
+      if(commit){
+        saveConfig();
+      } else {
+        EEPROM.put(EEPROM_START, store);
+      }
     }
+
     void saveValue(char *field, const char *value, size_t N, bool commit=true, bool force=false) {
-      if (strcmp(field, value) == 0 && !force) return;
+      if (strncmp(field, value, N) == 0 && !force) return;
       strlcpy(field, value, N);
-      size_t address = getAddr(field);
-      size_t fieldlen = strlen(field);
-      for (size_t i = 0; i <=fieldlen ; i++) EEPROM.write(address + i, field[i]);
-      if(commit)
-        EEPROM.commit();
+      if(commit){
+        saveConfig();
+      } else {
+        EEPROM.put(EEPROM_START, store);
+      }
     }
+
     uint32_t getChipId(){
       uint32_t chipId = 0;
       for(int i=0; i<17; i=i+8) {
@@ -307,6 +331,7 @@ class Config {
     bool _rtcFound;
     FS* _SDplaylistFS;
     void setDefaults();
+    void setBluetoothMode(bool active);
     static void doSleep();
     uint16_t color565(uint8_t r, uint8_t g, uint8_t b);
     void _setupVersion();

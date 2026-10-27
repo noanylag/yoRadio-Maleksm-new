@@ -46,36 +46,36 @@ Nextion nextion;
 QueueHandle_t displayQueue;
 
 #ifndef DSP_LCD	////////////////////////////// BATTERY CONSTANTS /////////////////////////////
-  // Константы для оптимизации
-  #define BAT_SAMPLES 100       // Количество замеров для точности
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  #define BAT_SAMPLES 100       // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-  float ADC_R1 = R1;		// Номинал резистора на плюс (+)
-  float ADC_R2 = R2;		// Номинал резистора на минус (-)
-//  float DELTA = config.store.batoffset;	// Величина коррекции напряжения батареи
+  float ADC_R1 = R1;		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ (+)
+  float ADC_R2 = R2;		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (-)
+//  float DELTA = config.store.batoffset;	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-  uint8_t g, e = 1;			// Счётчики для мигалок и осреднений
-  bool Charging = false;		// Признак, что подключено зарядное устройство
-  float Volt = 0.0f; 			// Напряжение на батарее
-  uint32_t lockTimer = 0;    	// Глобальная переменная для блокировки тренда определения зарядки
+  uint8_t g, e = 1;			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  bool Charging = false;		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  float Volt = 0.0f; 			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  uint32_t lockTimer = 0;    	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   uint8_t ChargeLevel;
   static float smoothDisplayLevel = -1.0f;
   static float voltAtStart = 0.0f;
-  int startPercent = 0;     		// Процент, который был ДО зарядки
+  int startPercent = 0;     		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-// ========= Массив напряжений на батарее, соответствующий проценту оставшегося заряда: 
+// ========= пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ: 
   float vs[22] = {2.80, 3.10, 3.20, 3.26, 3.29, 3.33, 3.37, 3.41, 3.46, 3.51, 3.56, 3.61, 3.65, 3.69, 3.72, 3.75, 3.78, 3.82, 3.88, 3.95, 4.03, 4.25};
 
-  // Структура для хранения состояния зарядки
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   struct {
     float lastVoltage = 0;
     uint32_t lastCheck = 0;
-    uint8_t chargeCount = 0;    // Счетчик последовательных увеличений напряжения
-    uint8_t dischargeCount = 0; // Счетчик последовательных падений напряжения
+    uint8_t chargeCount = 0;    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    uint8_t dischargeCount = 0; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   } chargingState;
 #endif			/////////////////////////////////////////////////////////////////////////////////
 
 #ifdef CPU_LOAD
-// Объявляем текстовый виджет для отображения загрузки CPU
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ CPU
 TextWidget cpuWidget;
 #endif
 
@@ -108,10 +108,10 @@ void Display::_createDspTask(){
 //============================================================================================================================
 DspCore dsp;
 
-Page *pages[] = { new Page(), new Page(), new Page(), new Page() };
+Page *pages[] = { new Page(), new Page(), new Page(), new Page(), new Page() };
 
 #if !((DSP_MODEL==DSP_ST7735 && DTYPE==INITR_BLACKTAB) || DSP_MODEL==DSP_ST7789 || DSP_MODEL==DSP_ST7796 || DSP_MODEL==DSP_ILI9488 \
- || DSP_MODEL==DSP_ILI9486 || DSP_MODEL==DSP_ILI9341 || DSP_MODEL==DSP_ILI9225 || DSP_MODEL==DSP_ST7789_170)
+ || DSP_MODEL==DSP_ILI9486 || DSP_MODEL==DSP_ILI9341 || DSP_MODEL==DSP_ILI9225 || DSP_MODEL==DSP_ST7789_170 || DSP_MODEL==DSP_GC9A01A)
   #undef  BITRATE_FULL
   #define BITRATE_FULL     false
 #endif
@@ -145,25 +145,25 @@ void Display::init() {
   dsp.initDisplay();
 #ifndef DSP_LCD			//////////////////BATTERY INIT /////////////////////////////
   if (config.store.batteryon) {
-    // Инициализация ADC для батареи
-    analogSetAttenuation(ADC_11db); // Установка диапазона
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ADC пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    analogSetAttenuation(ADC_11db); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-    // Серия быстрых замеров, чтобы "прогреть" АЦП и заполнить фильтр
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     uint32_t sum = 0;
     for(int i=0; i<50; i++) sum += analogReadMilliVolts(ADC_PIN);
 
     float startVolt = ((sum / 50.0f) / 1000.0f) * ((ADC_R1 + ADC_R2) / ADC_R2) + config.store.batoffset;
     if (startVolt < 0.0f) startVolt = 0.0f;
 
-    // Инициализация ключевой переменной текущим значением
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     Volt = startVolt;
 
-    // Состояние зарядки: фиксируем стартовую точку для отслеживания тренда
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     chargingState.lastVoltage = startVolt;
     chargingState.chargeCount = 0;
     chargingState.dischargeCount = 0;
 
-    lockTimer = millis();		// Запуск таймера блокировки счетчиков на 5 секунд
+    lockTimer = millis();		// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 5 пїЅпїЅпїЅпїЅпїЅпїЅ
   }
 #endif					///////////////////////////////////////////////////////////////////////////
   displayQueue=NULL;
@@ -264,7 +264,7 @@ void Display::_buildPager(){
   #endif
   
 #ifdef CPU_LOAD
-  // Добавляем CPU виджет в страницу плеера
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ CPU пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
   cpuWidget.init(cpuConf, 20, false, config.theme.cpu, config.theme.background);
   perfmon_start(); 			// Start CPU monitoring
 //  dsp.cpuWidget.setActive(false);
@@ -309,6 +309,12 @@ void Display::_buildPager(){
   #endif
   pages[PG_PLAYLIST]->addWidget(_plcurrent);
   pages[PG_PLAYLIST]->addWidget(_plwidget);
+
+#ifndef DSP_LCD
+  _btWidget = new BluetoothWidget();
+  _btWidget->init(config.theme.clock, config.theme.background);
+  pages[PG_BLUETOOTH]->addWidget(_btWidget);
+#endif
 
   for(const auto& p: pages) _pager->addPage(p);
 }
@@ -374,6 +380,7 @@ void Display::_start() {
   #ifndef HIDE_IP
     if(_volip) _volip->setText(config.ipToStr(WiFi.localIP()), iptxtFmt);
   #endif
+  if(config.getMode()==PM_SDCARD && clockMove.width>=0) _clock->moveTo(clockMove);
   _pager->setPage( pages[PG_PLAYER]);
   _volume();
   _station();
@@ -397,16 +404,21 @@ void Display::_swichMode(displayMode_e newmode) {
     //nextion.swichMode(newmode);
     nextion.putRequest({NEWMODE, newmode});
   #endif
-  if (newmode == _mode || (network.status != CONNECTED && network.status != SDREADY)) return;
+  if (newmode == _mode || (network.status != CONNECTED && network.status != SDREADY && newmode != BLUETOOTH && _mode != BLUETOOTH)) return;
+  #if DSP_MODEL==DSP_GC9A01A
+    const bool returningFromVolume = newmode == PLAYER && _mode == VOL;
+  #else
+    const bool returningFromVolume = false;
+  #endif
   _mode = newmode;
   dsp.setScrollId(NULL);
-  if (newmode == PLAYER) {
-    if(player.isRunning())
+if (newmode == PLAYER) {
+    if(player.isRunning() || config.getMode()==PM_SDCARD)
       if(clockMove.width<0) _clock->moveBack(); else _clock->moveTo(clockMove);
     else
       _clock->moveBack();
     #ifdef DSP_LCD
-      dsp.clearDsp();
+      if (!returningFromVolume) dsp.clearDsp();
     #endif
     numOfNextStation = 0;
     #ifdef META_MOVE
@@ -416,23 +428,101 @@ void Display::_swichMode(displayMode_e newmode) {
     _meta->setText(config.station.name);
     _nums->setText("");
     config.isScreensaver = false;
-    _pager->setPage( pages[PG_PLAYER]);
-    config.setDspOn(config.store.dspon, false);
+    _pager->setPage(pages[PG_PLAYER], false, !returningFromVolume);
+
+    // === пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ===
+    // пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ public, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
+    // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ blockForceFirstDraw пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
+    #if BITRATE_FULL
+      if (_fullbitrate) {
+         _fullbitrate->_reset(); 
+         _fullbitrate->setActive(true);
+      }
+    //#else
+    //  if (_bitrate) {
+    //     _bitrate->_reset(); // пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ TextWidget пїЅпїЅпїЅ _reset(). 
+    //     // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ:
+    //     ((BitrateWidget*)_bitrate)->_reset();
+    //     _bitrate->setActive(true);
+    //  }
+    //#endif
+	    #else
+      if (_bitrate) {
+         _bitrate->setActive(true);   // TextWidget::_draw() пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+      }
+    #endif
+    // ==================================================================
+
+    if (config.store.faderon) {
+      display.wakeup();   // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ fader (ctrls_on_loop > brightnessOn)
+    } else {
+      config.setDspOn(config.store.dspon, false);   // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ fader пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    }
     pm.on_display_player();
+}
+
+  if (newmode == BLUETOOTH) {
+    config.isScreensaver = false;
+    #ifdef DSP_LCD
+      _showDialog("Bluetooth");
+    #else
+      if (_btWidget) _btWidget->resetActivityBlink();
+      _pager->setPage(pages[PG_BLUETOOTH]);
+    #endif
+    if (config.store.faderon) display.wakeup();
   }
+
   if (newmode == SCREENSAVER || newmode == SCREENBLANK) {
     config.isScreensaver = true;
+    
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ TFT)
+    uint16_t lt = (dsp.width()  - _clock->clockWidth()) / 2;
+    int16_t  ft;
+
+    #if DSP_MODEL==DSP_GC9A01A
+      // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+      ft = (dsp.height() - _clock->dateSize()) / 2 + 30;
+      lt = lt - 10;
+    #else
+      // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ) TFT пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+      #ifndef CLOCKFONT5x7
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ GFX (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Y пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
+        ft = (dsp.height() + _clock->dateSize()) / 2 + 25; 
+      #else
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 5x7 (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Y пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
+        ft = (dsp.height() - _clock->dateSize()) / 2;
+      #endif
+    #endif
+
+    if(ft < 0) ft = 0;
+    
+    // ЖёпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    _clock->moveTo({lt, (uint16_t)ft, 0});
+
     _pager->setPage( pages[PG_SCREENSAVER]);
+
     if (newmode == SCREENBLANK) {
       //dsp.clearClock();
       _clock->clear();
       config.setDspOn(false, false);
     }
   }else{
+    // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    #if DSP_MODEL==DSP_GC9A01A
+    // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ VU, пїЅпїЅпїЅпїЅпїЅ пїЅ STOP.
+    // moveBack() пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ.пїЅ. setPositionNoRedraw пїЅ _time() пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
+    if (player.isRunning() || config.getMode()==PM_SDCARD) {
+      _clock->moveTo(clockMove);   // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ VU
+    } else {
+      _clock->moveBack();          // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ screensaver пїЅ STOP
+    }
+    #endif
+    
     config.screensaverTicks=SCREENSAVERSTARTUPDELAY;
     config.screensaverPlayingTicks=SCREENSAVERSTARTUPDELAY;
     config.isScreensaver = false;
   }
+
   if (newmode == VOL) {
     #ifndef HIDE_VOLPAGE
       #ifndef HIDE_IP
@@ -488,23 +578,33 @@ void Display::putRequest(displayRequestType_e type, int payload){
 void Display::_layoutChange(bool played){
   if(config.store.vumeter && _vuwidget){
     if(played){
+      _clock->clearDate();
       if(_vuwidget) _vuwidget->unlock();
       //_clock->moveTo(clockMove);
       if(clockMove.width<0) _clock->moveBack(); else _clock->moveTo(clockMove);
       if(_weather) _weather->moveTo(weatherMoveVU);
     }else{
       if(_vuwidget) if(!_vuwidget->locked()) _vuwidget->lock();
-      _clock->moveBack();
+      if(config.getMode()!=PM_SDCARD){
+        #if DSP_MODEL!=DSP_GC9A01A
+        _clock->moveBack();
+        #endif
+      }
       if(_weather) _weather->moveBack();
     }
   }else{
     if(played){
+      if(_vuwidget) _vuwidget->clearArea();
       if(clockMove.width<0) _clock->moveBack(); else _clock->moveTo(clockMove);
       if(_weather) _weather->moveTo(weatherMove);
       //_clock->moveBack();
     }else{
       if(_weather) _weather->moveBack();
-      _clock->moveBack();
+      if(config.getMode()!=PM_SDCARD){
+        #if DSP_MODEL!=DSP_GC9A01A
+        _clock->moveBack();
+        #endif
+      }
     }
   }
 }
@@ -520,7 +620,7 @@ uint32_t Display::_calculateCpuUsage() {
 }
 #endif
 
-void Display::loop() {
+void Display::loop() { static bool layoutIsPlaying = false, keepLayoutOnStart = false;
   if(_bootStep==0) {
     _pager->begin();
     _bootScreen();
@@ -553,19 +653,35 @@ void Display::loop() {
         case DRAWVOL: _volume(); break;
         case DBITRATE: {
             char buf[20]; 
-            snprintf(buf, 20, bitrateFmt, config.station.bitrate); 
-            if(_bitrate) { _bitrate->setText(config.station.bitrate==0?"":buf); } 
+            // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ 0 (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ), пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+            if (config.station.bitrate == 0) {
+              snprintf(buf, sizeof(buf), "---");
+            } else {
+              snprintf(buf, sizeof(buf), bitrateFmt, config.station.bitrate); 
+            }
+
+            if(_bitrate) { 
+              _bitrate->setText(buf); 
+            } 
             if(_fullbitrate) { 
               _fullbitrate->setBitrate(config.station.bitrate); 
               _fullbitrate->setFormat(config.configFmt); 
             } 
           }
           break;
+
+
+
+
+
+
+
+
         case AUDIOINFO: if(_heapbar)  { _heapbar->lock(!config.store.audioinfo); _heapbar->setValue(player.inBufferFilled()); } break;
         case SHOWVUMETER: {
           if(_vuwidget){
             _vuwidget->lock(!config.store.vumeter); 
-            _layoutChange(player.isRunning());
+            _layoutChange(player.isRunning()); layoutIsPlaying = player.isRunning();
           }
           break;
         }
@@ -602,8 +718,10 @@ void Display::loop() {
           break;
         }
         case DSPRSSI: if(_rssi){ _setRSSI(request.payload); } if (_heapbar && config.store.audioinfo) _heapbar->setValue(player.isRunning()?player.inBufferFilled():0); break;
-        case PSTART: _layoutChange(true);   break;
-        case PSTOP:  _layoutChange(false);  break;
+        case PSTART: if (!keepLayoutOnStart) _layoutChange(true); layoutIsPlaying = true; keepLayoutOnStart = false; break;
+        case PSTOP:
+  if (request.payload == 1) keepLayoutOnStart = layoutIsPlaying; else { _layoutChange(false); layoutIsPlaying = false; keepLayoutOnStart = false; }
+  break;
         case DSP_START: _start();  break;
         case NEWIP: {
           #ifndef HIDE_IP
@@ -647,7 +765,7 @@ void Display::loop() {
 #ifndef DSP_LCD		/////////// BATTERY LOOP //////////////////////////
   if (config.store.batteryon && _mode==PLAYER && network.status == CONNECTED && _bootStep==2 && !config.isScreensaver) {	
     static uint32_t lastBatteryUpdate = 0;
-       if (millis() - lastBatteryUpdate >= 1000) { // Обновляем каждую секунду
+       if (millis() - lastBatteryUpdate >= 1000) { // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
           readBattery();
           BatteryShow();
           lastBatteryUpdate = millis();
@@ -728,30 +846,18 @@ void Display::_time(bool redraw) {
   }
 #endif
 
-  if(config.isScreensaver && network.timeinfo.tm_sec % 10 == 0){
-    #if TIME_SIZE<19
-//      uint16_t ft=static_cast<uint16_t>(random(TFT_FRAMEWDT, (dsp.height()-TIME_SIZE*CHARHEIGHT-TFT_FRAMEWDT)));
-      uint16_t ft=static_cast<uint16_t>(random(0, (dsp.height()-TIME_SIZE*CHARHEIGHT)));
-    #else
-//      uint16_t ft=static_cast<uint16_t>(random(TFT_FRAMEWDT+TIME_SIZE, (dsp.height()-_clock->dateSize()-TFT_FRAMEWDT*2)));
-//      uint16_t ft=static_cast<uint16_t>(random(TIME_SIZE, (dsp.height()-_clock->dateSize())));
-      uint16_t ft=static_cast<uint16_t>(random(TIME_SIZE, dsp.height() - TFT_FRAMEWDT*2 - CHARHEIGHT*2));
-    #endif
-//    uint16_t lt=static_cast<uint16_t>(random(TFT_FRAMEWDT, (dsp.width()-_clock->clockWidth()-TFT_FRAMEWDT)));
-    uint16_t lt=static_cast<uint16_t>(random(0, (dsp.width() - _clock->clockWidth())));
-//    uint16_t lt=static_cast<uint16_t>(random(dsp.width() - _clock->clockWidth() - 10,  dsp.width() - _clock->clockWidth() + 3  ));
-//    uint16_t lt = static_cast<uint16_t>(random(0,  (dsp.width() - (uint16_t)(TIME_SIZE*3.1f))));
-    if(clockConf.align==WA_CENTER) lt-=(dsp.width()-_clock->clockWidth())/2;
-//    if(ROTATE_90) lt = clockConf.left + lt + (uint16_t)(TIME_SIZE*3.1f) - dsp.width();
-//    else                  lt = clockConf.left + lt - (dsp.width() - (uint16_t)(TIME_SIZE*3.1f))/2;
-    //_clock->moveTo({clockConf.left, ft, 0});
-    _clock->moveTo({lt, ft, 0});
-  }
+  // ===== пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ GC9A01A: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ screensaver пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  // пїЅ _swichMode() пїЅпїЅпїЅпїЅпїЅ moveTo(). пїЅпїЅпїЅпїЅпїЅ setPositionNoRedraw пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ,
+  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ moveBack() пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ. =====
+
+
   _clock->draw(redraw);
-  /*#ifdef USE_NEXTION
-    nextion.printClock(network.timeinfo);
-  #endif*/
 }
+
+
+
+
+
 
 void Display::_volume() {
   if(_volbar) _volbar->setValue(config.store.volume);
@@ -792,179 +898,179 @@ void Display::wakeup(){
 }
 
 #ifndef DSP_LCD		////////////////////////////////// BATTERY ///////////////////////////////////////////
-// ======== Вспомогательная функция для перевода Вольт в проценты по таблице ==========
+// ======== пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ==========
 int Display::getRawPercent(float voltage) {
-    if (voltage >= vs[20]) return 100; 		// 4.03V и выше
-    if (voltage <= vs[0]) return 0; 			// 2.60V и ниже
+    if (voltage >= vs[20]) return 100; 		// 4.03V пїЅ пїЅпїЅпїЅпїЅ
+    if (voltage <= vs[0]) return 0; 			// 2.60V пїЅ пїЅпїЅпїЅпїЅ
 
     for (uint8_t i = 0; i < 20; i++) {
         if (voltage >= vs[i] && voltage < vs[i + 1]) {
             float segmentRange = vs[i+1] - vs[i];
             float offsetInSegment = voltage - vs[i];
-            // Линейная интерполяция внутри 5%-го шага
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ 5%-пїЅпїЅ пїЅпїЅпїЅпїЅ
             return (i * 5) + (int)round((offsetInSegment / segmentRange) * 5.0f);
         }
     }
     return 0;
 }
-// =================== Чтение и расчёт напряжений и заряда ==========================
+// =================== пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ ==========================
 void Display::readBattery() {
-    // 1. Чтение АЦП с накоплением (100 замеров) в милливольтах
+    // 1. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (100 пїЅпїЅпїЅпїЅпїЅпїЅпїЅ) пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     uint32_t sumMilliVolts = 0;
-    // Читаем значение в милливольтах напрямую через API ядра
+    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ API пїЅпїЅпїЅпїЅ
     for(uint8_t i = 0; i < BAT_SAMPLES; i++) {
-        sumMilliVolts += analogReadMilliVolts(ADC_PIN); 	// Используем встроенную калибровку eFuse
+        sumMilliVolts += analogReadMilliVolts(ADC_PIN); 	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ eFuse
     }
 
-    //  Получаем результат в вольтах на батарее через делитель
+    //  пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     float rawVolt = ((sumMilliVolts / (float)BAT_SAMPLES) / 1000.0f) * ((ADC_R1 + ADC_R2) / ADC_R2) + config.store.batoffset;
     if (rawVolt < 0.0f) rawVolt = 0.0f;
 
-    // Переменные для фильтрации и блокировки тренда
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     float instantDiff = abs(rawVolt - Volt);
 
-    // Дополнительная программная коррекция (если заводской мало)
-    // На ядре 3.x для S3 и ESP32 эти формулы обычно уже не требуются, лучше привести их к простому смещению:
-    //#ifdef ARDUINO_ESP32S3_DEV // S3 обычно очень линеен, коррекция может не потребоваться
-       // rawVolt = rawVolt * 1.02f; // Пример коэффициента, если врет на 2%
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ)
+    // пїЅпїЅ пїЅпїЅпїЅпїЅ 3.x пїЅпїЅпїЅ S3 пїЅ ESP32 пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ:
+    //#ifdef ARDUINO_ESP32S3_DEV // S3 пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+       // rawVolt = rawVolt * 1.02f; // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ 2%
     //#endif
 
-    // 2. Сглаживание напряжения (Fast Track для зарядки > 80мВ, детектор "Грязных скачков", EMA-фильтр)
-    if (instantDiff > 0.07f) {		// Честный Fast Track (подключение/отключение зарядки)
-        Volt = rawVolt;			// Мгновенный сброс фильтра при скачке (втык/вытык кабеля)
-        lockTimer = 0; 			// Снимаем блокировку, это явно кабель
+    // 2. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (Fast Track пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ > 80пїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ", EMA-пїЅпїЅпїЅпїЅпїЅпїЅ)
+    if (instantDiff > 0.07f) {		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ Fast Track (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
+        Volt = rawVolt;			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
+        lockTimer = 0; 			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     } 
-    else if (instantDiff > 0.01f) {	// "ГРЯЗНЫЙ СКАЧОК" (ПЕРЕХОДНЫЙ ПРОЦЕСС - подсветка, плеер и т.д.)
-        Volt = rawVolt; 			// Обновляем напряжение мгновенно, чтобы пользователь видел цифры
-        lockTimer = millis(); 		// Ставим блокировку счетчиков на 5 секунд
+    else if (instantDiff > 0.01f) {	// "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ" (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅ.пїЅ.)
+        Volt = rawVolt; 			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+        lockTimer = millis(); 		// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 5 пїЅпїЅпїЅпїЅпїЅпїЅ
     }
-    else {					// Обычный режим (плавный EMA-фильтр)
-        Volt = (rawVolt * 0.1f) + (Volt * 0.9f);	// Плавное усреднение шума (10% нового, 90% старого)
+    else {					// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ EMA-пїЅпїЅпїЅпїЅпїЅпїЅ)
+        Volt = (rawVolt * 0.1f) + (Volt * 0.9f);	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (10% пїЅпїЅпїЅпїЅпїЅпїЅ, 90% пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
     }
 
-    // 3. Детектор состояния зарядки (Тренд и пороги) и захват Базы
-    float diffV = Volt - chargingState.lastVoltage;	// Разница за 1 сек. между текущим сглаженным Volt и предыдущим зафиксированным
-    bool isLocked = (millis() - lockTimer < 5000); // Проверка блокировки
+    // 3. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ) пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+    float diffV = Volt - chargingState.lastVoltage;	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 1 пїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Volt пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    bool isLocked = (millis() - lockTimer < 5000); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-    // Мгновенный детектор (Фильтр Fast Track уже пропустил этот скачок)
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ Fast Track пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
     if (abs(diffV) > 0.07f) {
         bool oldCharging = Charging;
-        Charging = (diffV > 0); 				// Быстрая реакция на скачок
+        Charging = (diffV > 0); 				// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
-       // Момент втыкания шнура: фиксируем смещение
+       // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
        if (Charging && !oldCharging) {
-           startPercent = getRawPercent(chargingState.lastVoltage); 	// Берем чистый % до прыжка
-           voltAtStart = Volt; 						// ФИКСИРУЕМ вольтаж после прыжка (База для схождения)
-           smoothDisplayLevel = (float)startPercent; 		// Убираем задержку фильтра
+           startPercent = getRawPercent(chargingState.lastVoltage); 	// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ % пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+           voltAtStart = Volt; 						// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
+           smoothDisplayLevel = (float)startPercent; 		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
        }
         chargingState.chargeCount = Charging ? 15 : 0;
         chargingState.dischargeCount = Charging ? 0 : 15;
     }
-    else if (!isLocked) { 		// Анализ медленного тренда (только если нет блокировки от "Грязного скачка" на 5 секунд
-        if (diffV > 0.001f) { 			// Рост (Зарядка)
+    else if (!isLocked) { 		// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅ 5 пїЅпїЅпїЅпїЅпїЅпїЅ
+        if (diffV > 0.001f) { 			// пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
             if (chargingState.chargeCount < 15) chargingState.chargeCount++;
             if (chargingState.dischargeCount > 0) chargingState.dischargeCount--;
-        } else if (diffV < -0.001f) { 	// Падение (Разрядка)
+        } else if (diffV < -0.001f) { 	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
             if (chargingState.dischargeCount < 15) chargingState.dischargeCount++;
             if (chargingState.chargeCount > 0) chargingState.chargeCount--;
         }
 
-        // Подтверждение тренда (5 стабильных итераций роста/падения)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (5 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         if (chargingState.chargeCount >= 5) Charging = true;
         if (chargingState.dischargeCount >= 5) Charging = false;
     }
 
-    // Страховочные пороги
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 //    if (Volt > 4.12f) Charging = true; 
     if (Volt < 3.60f && diffV < 0) Charging = false;
 
-    chargingState.lastVoltage = Volt; 	// Сохраняем текущее сглаженное значение для следующего сравнения
+    chargingState.lastVoltage = Volt; 	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-    // 4. Расчет отображаемых процентов (smoothDisplayLevel)
-    if (smoothDisplayLevel < 0) smoothDisplayLevel = (float)getRawPercent(Volt); 	// Если это первый запуск — инициализируем
+    // 4. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (smoothDisplayLevel)
+    if (smoothDisplayLevel < 0) smoothDisplayLevel = (float)getRawPercent(Volt); 	// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
     if (Charging) {
-        // ШКАЛА ЗАРЯДКИ: Пропорция от (voltAtStart) до (4.25V)
-        float vRange = 4.25f - voltAtStart;		// Считаем диапазон: от того, что было на клеммах, до максимума (4.25)
-        if (vRange < 0.05f) vRange = 0.05f; 	// Защита для почти полной батареи
+        // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ (voltAtStart) пїЅпїЅ (4.25V)
+        float vRange = 4.25f - voltAtStart;		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (4.25)
+        if (vRange < 0.05f) vRange = 0.05f; 	// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
         float vProgress = Volt - voltAtStart;
         float target = (float)startPercent + (vProgress / vRange) * (100.0f - (float)startPercent);
 
        if (target > 100.0f) target = 100.0f;
-       if (target < (float)startPercent) target = (float)startPercent; // Не даем падать ниже старта
+       if (target < (float)startPercent) target = (float)startPercent; // пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
-        // Мягкий фильтр (0.1) для стабильности цифр
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (0.1) пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
         smoothDisplayLevel = (target * 0.1f) + (smoothDisplayLevel * 0.9f);
     } else {
-        // --- РАЗРЯДКА ---
+        // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
         int rawPercent = getRawPercent(Volt);
-        voltAtStart = 0; 		// Сбрасываем стартовый вольтаж для следующего цикла зарядки
+        voltAtStart = 0; 		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-        // Асимметричный фильтр: вниз реагируем быстро, вверх — медленно
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         float k = ((float)rawPercent < smoothDisplayLevel) ? 0.2f : 0.01f;
         smoothDisplayLevel = ((float)rawPercent * k) + (smoothDisplayLevel * (1.0f - k));
     }
 
-    // 5. Итоговое округление
+    // 5. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     ChargeLevel = (uint8_t)round(smoothDisplayLevel);
     if (ChargeLevel > 100) ChargeLevel = 100;
 }
 /////////////////////////////// BATTERY SHOW //////////////////////////////////////////////
   void Display::BatteryShow() {
-// ================= Отрисовка мигалок  и батарейки =====================
+// ================= пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ  пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ =====================
   char batbuf[5] = "";
   #ifdef PSFBUFFER
      uint16_t batcolor = 0;
-     dsp.setTextSize(BatFS);		// Установка TextSize
+     dsp.setTextSize(BatFS);		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ TextSize
   #endif
   #ifdef DSP_OLED
      dsp.setTextSize(1);
   #endif
-  if (Charging) {			// Если идёт зарядка - бегающие квадратики - цвет Светлосиний (Cyan)
+  if (Charging) {			// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (Cyan)
      #ifdef PSFBUFFER
-        batcolor = dsp.color565(0, 255, 255); 			// Светлосиний (Cyan)
+        batcolor = dsp.color565(0, 255, 255); 			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (Cyan)
      #endif
      #ifdef DSP_OLED
-//        dsp.setTextColor(config.theme.background, config.theme.clock); 		// (0%) установка инверсного цвета
-//        dsp.setTextColor(config.theme.clock, config.theme.background);			// Светлый
+//        dsp.setTextColor(config.theme.background, config.theme.clock); 		// (0%) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+//        dsp.setTextColor(config.theme.clock, config.theme.background);			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
      #endif
-     if (g == 1) strcpy(batbuf,"\xA0\xA2\x9E\x9F"); 				// 2 квад. в конце
-     if (g == 2) strcpy(batbuf,"\xA0\x9E\x9E\xA3"); 				// 2 квад. по краям
-     if (g == 3) strcpy(batbuf,"\x9D\x9E\xA2\xA3"); 			// 2 квад. в начале
-     if (g >= 4) {g = 0; strcpy(batbuf,"\x9D\xA2\xA2\x9F");} 		// 2 квад. в середине
+     if (g == 1) strcpy(batbuf,"\xA0\xA2\x9E\x9F"); 				// 2 пїЅпїЅпїЅпїЅ. пїЅ пїЅпїЅпїЅпїЅпїЅ
+     if (g == 2) strcpy(batbuf,"\xA0\x9E\x9E\xA3"); 				// 2 пїЅпїЅпїЅпїЅ. пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+     if (g == 3) strcpy(batbuf,"\x9D\x9E\xA2\xA3"); 			// 2 пїЅпїЅпїЅпїЅ. пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+     if (g >= 4) {g = 0; strcpy(batbuf,"\x9D\xA2\xA2\x9F");} 		// 2 пїЅпїЅпїЅпїЅ. пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
      g++;
-  } else if (Volt < 2.8) { 	// Требуется зарядка - мигающие квадратики - Красный (Red)
+  } else if (Volt < 2.8) { 	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (Red)
      #ifdef PSFBUFFER
-        batcolor = dsp.color565(255, 0, 0); 			// (0%) установка цвет Красный (Red)
+        batcolor = dsp.color565(255, 0, 0); 			// (0%) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (Red)
      #endif
      #ifdef DSP_OLED
-//        dsp.setTextColor(config.theme.background, config.theme.clock); 		// (0%) установка инверсного цвета
-        dsp.setTextColor(config.theme.clock, config.theme.background);			// Светлый
+//        dsp.setTextColor(config.theme.background, config.theme.clock); 		// (0%) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+        dsp.setTextColor(config.theme.clock, config.theme.background);			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
      #endif
-     if (g == 1) strcpy(batbuf,"\xA0\xA2\xA2\xA3"); 				// полная - 6 кв.
-     if (g >= 2) {g = 0; strcpy(batbuf,"\x9D\x9E\x9E\x9F");} 		// пустая - 0 кв.
+     if (g == 1) strcpy(batbuf,"\xA0\xA2\xA2\xA3"); 				// пїЅпїЅпїЅпїЅпїЅпїЅ - 6 пїЅпїЅ.
+     if (g >= 2) {g = 0; strcpy(batbuf,"\x9D\x9E\x9E\x9F");} 		// пїЅпїЅпїЅпїЅпїЅпїЅ - 0 пїЅпїЅ.
      g++;
-  } else { 				// Статическая батарейка
+  } else { 				// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
      #ifdef PSFBUFFER
-       if (Volt >= 3.82)      {batcolor = dsp.color565(100, 255, 150); strcpy(batbuf, "\xA0\xA2\xA2\xA3"); }    //больше 85% (6 квад.) - зел.
-       else if (Volt >= 3.72) {batcolor = dsp.color565(50, 255, 100); strcpy(batbuf, "\x9D\xA2\xA2\xA3"); }    //от70 до 85% (5 квад.) - зел.
-       else if (Volt >= 3.61) {batcolor = dsp.color565(0, 255, 0);     strcpy(batbuf, "\x9D\xA1\xA2\xA3"); }    //от 55 до 70% (4 квад.) - зел.
-       else if (Volt >= 3.46) {batcolor = dsp.color565(75, 255, 0);    strcpy(batbuf, "\x9D\x9E\xA2\xA3"); }    //от 40 до 55% (3 квад.) - зел.
-       else if (Volt >= 3.33) {batcolor = dsp.color565(150, 255, 0);   strcpy(batbuf, "\x9D\x9E\xA1\xA3"); }   //от 25 до 40% (2 квад.) - зел.
-       else if (Volt >= 3.20) {batcolor = dsp.color565(255, 255, 0);   strcpy(batbuf, "\x9D\x9E\x9E\xA3"); } //от 10 до 25% (1 квад.) - жёлт.
-       else if (Volt >= 2.8)  {batcolor = dsp.color565(255, 0, 0);     strcpy(batbuf, "\x9D\x9E\x9E\x9F"); }      //от 0 до 10% (0 квад.) - крас.
+       if (Volt >= 3.82)      {batcolor = dsp.color565(100, 255, 150); strcpy(batbuf, "\xA0\xA2\xA2\xA3"); }    //пїЅпїЅпїЅпїЅпїЅпїЅ 85% (6 пїЅпїЅпїЅпїЅ.) - пїЅпїЅпїЅ.
+       else if (Volt >= 3.72) {batcolor = dsp.color565(50, 255, 100); strcpy(batbuf, "\x9D\xA2\xA2\xA3"); }    //пїЅпїЅ70 пїЅпїЅ 85% (5 пїЅпїЅпїЅпїЅ.) - пїЅпїЅпїЅ.
+       else if (Volt >= 3.61) {batcolor = dsp.color565(0, 255, 0);     strcpy(batbuf, "\x9D\xA1\xA2\xA3"); }    //пїЅпїЅ 55 пїЅпїЅ 70% (4 пїЅпїЅпїЅпїЅ.) - пїЅпїЅпїЅ.
+       else if (Volt >= 3.46) {batcolor = dsp.color565(75, 255, 0);    strcpy(batbuf, "\x9D\x9E\xA2\xA3"); }    //пїЅпїЅ 40 пїЅпїЅ 55% (3 пїЅпїЅпїЅпїЅ.) - пїЅпїЅпїЅ.
+       else if (Volt >= 3.33) {batcolor = dsp.color565(150, 255, 0);   strcpy(batbuf, "\x9D\x9E\xA1\xA3"); }   //пїЅпїЅ 25 пїЅпїЅ 40% (2 пїЅпїЅпїЅпїЅ.) - пїЅпїЅпїЅ.
+       else if (Volt >= 3.20) {batcolor = dsp.color565(255, 255, 0);   strcpy(batbuf, "\x9D\x9E\x9E\xA3"); } //пїЅпїЅ 10 пїЅпїЅ 25% (1 пїЅпїЅпїЅпїЅ.) - пїЅпїЅпїЅ.
+       else if (Volt >= 2.8)  {batcolor = dsp.color565(255, 0, 0);     strcpy(batbuf, "\x9D\x9E\x9E\x9F"); }      //пїЅпїЅ 0 пїЅпїЅ 10% (0 пїЅпїЅпїЅпїЅ.) - пїЅпїЅпїЅпїЅ.
      #endif
      #ifdef DSP_OLED
-//        dsp.setTextColor(config.theme.background, config.theme.clock); 		// (0%) установка инверсного цвета
-//        dsp.setTextColor(config.theme.clock, config.theme.background);			// Светлый
-        if (Volt >= 3.82)      {strcpy(batbuf, "\xA0\xA2\xA2\xA3"); } 		//больше 85% (6 квад.)
-        else if (Volt >= 3.72) {strcpy(batbuf, "\x9D\xA2\xA2\xA3"); } 		//от70 до 85% (5 квад.)
-        else if (Volt >= 3.61) {strcpy(batbuf, "\x9D\xA1\xA2\xA3"); } 		//от 55 до 70% (4 квад.)
-        else if (Volt >= 3.46) {strcpy(batbuf, "\x9D\x9E\xA2\xA3"); } 		//от 40 до 55% (3 квад.)
-        else if (Volt >= 3.33) {strcpy(batbuf, "\x9D\x9E\xA1\xA3"); } 		//от 25 до 40% (2 квад.)
-        else if (Volt >= 3.20) {strcpy(batbuf, "\x9D\x9E\x9E\xA3"); } 		//от 10 до 25% (1 квад.)
-        else if (Volt >= 2.8)  {strcpy(batbuf, "\x9D\x9E\x9E\x9F"); } 		//от 0 до 10% (0 квад.)
+//        dsp.setTextColor(config.theme.background, config.theme.clock); 		// (0%) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+//        dsp.setTextColor(config.theme.clock, config.theme.background);			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        if (Volt >= 3.82)      {strcpy(batbuf, "\xA0\xA2\xA2\xA3"); } 		//пїЅпїЅпїЅпїЅпїЅпїЅ 85% (6 пїЅпїЅпїЅпїЅ.)
+        else if (Volt >= 3.72) {strcpy(batbuf, "\x9D\xA2\xA2\xA3"); } 		//пїЅпїЅ70 пїЅпїЅ 85% (5 пїЅпїЅпїЅпїЅ.)
+        else if (Volt >= 3.61) {strcpy(batbuf, "\x9D\xA1\xA2\xA3"); } 		//пїЅпїЅ 55 пїЅпїЅ 70% (4 пїЅпїЅпїЅпїЅ.)
+        else if (Volt >= 3.46) {strcpy(batbuf, "\x9D\x9E\xA2\xA3"); } 		//пїЅпїЅ 40 пїЅпїЅ 55% (3 пїЅпїЅпїЅпїЅ.)
+        else if (Volt >= 3.33) {strcpy(batbuf, "\x9D\x9E\xA1\xA3"); } 		//пїЅпїЅ 25 пїЅпїЅ 40% (2 пїЅпїЅпїЅпїЅ.)
+        else if (Volt >= 3.20) {strcpy(batbuf, "\x9D\x9E\x9E\xA3"); } 		//пїЅпїЅ 10 пїЅпїЅ 25% (1 пїЅпїЅпїЅпїЅ.)
+        else if (Volt >= 2.8)  {strcpy(batbuf, "\x9D\x9E\x9E\x9F"); } 		//пїЅпїЅ 0 пїЅпїЅ 10% (0 пїЅпїЅпїЅпїЅ.)
      #endif
   }
      #ifdef PSFBUFFER
@@ -973,66 +1079,66 @@ void Display::readBattery() {
      dsp.setCursor(BatX, BatY);
      dsp.print(batbuf);
 
-// ======= Вывод цифровых значений напряжения  на дисплей ===================
+// ======= пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ  пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ===================
   #ifdef PSFBUFFER
-     if (config.store.voltageon) {		// ========== Начало вывода напряжения
-        dsp.setTextSize(VoltFS); 			// Установка TextSize
-        dsp.setCursor(VoltX, VoltY); 		// Установка координат для вывода напряжения
+     if (config.store.voltageon) {		// ========== пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        dsp.setTextSize(VoltFS); 			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ TextSize
+        dsp.setCursor(VoltX, VoltY); 		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-        if(ROTATE_90){				// если режим "ROTATE_90"
+        if(ROTATE_90){				// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ "ROTATE_90"
            char voltbuf[12];
            snprintf(voltbuf, sizeof(voltbuf), "%.3f", Volt);
-           dsp.printf("Bat: %sv", voltbuf);		// Вывод напряжения (текущим цветом)
+           dsp.printf("Bat: %sv", voltbuf);		// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
         }else{
 
-        #if DSP_MODEL==DSP_ST7735			// Только для  дисплея ST7735
-        if (player.status()!=PLAYING) {			// и если не режим "Play" и не режим "ROTATE_90"
-    // ========================== Отрисовка аккумулятора ================================
+        #if DSP_MODEL==DSP_ST7735			// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ  пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ST7735
+        if (player.status()!=PLAYING) {			// пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ "Play" пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ "ROTATE_90"
+    // ========================== пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ================================
             dsp.drawRect(8, 71, 4, 3, dsp.color565(192, 192, 192));
             dsp.drawRect(23, 71, 4, 3, dsp.color565(192, 192, 192));
             dsp.drawRect(5, 74, 25, 3, dsp.color565(192, 192, 192));
             dsp.drawRect(6, 76, 23, 17, dsp.color565(192, 192, 192));
             dsp.drawRect(5, 92, 25, 3, dsp.color565(192, 192, 192));
-    // ======================= Вывод цифровых значений напряжения  на дисплей ==================
+    // ======================= пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ  пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ==================
             char voltbuf[6];
             snprintf(voltbuf, sizeof(voltbuf), "%.2f", Volt);
-            dsp.printf(voltbuf);				// Вывод напряжения (текущим цветом)
+            dsp.printf(voltbuf);				// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
         }
         #else
            char voltbuf[7];
            snprintf(voltbuf, sizeof(voltbuf), "%.3fv", Volt);
-           dsp.printf(voltbuf);				// Вывод напряжения (текущим цветом)
+           dsp.printf(voltbuf);				// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
         #endif
         }
-     } 				// =========== Конец вывода напряжения
+     } 				// =========== пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-   // ======= Вывод процентых значений заряда на дисплей =======================
+   // ======= пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ =======================
      char procbuf[6];
-   //  snprintf(procbuf, sizeof(procbuf), "%3i%%", ChargeLevel);		// формат вправо
-   //  snprintf(procbuf, sizeof(procbuf), "%i%% ", ChargeLevel); 		// с пробелом в конце - формат влево
-     sprintf(procbuf, "%3i", ChargeLevel);		// формат вправо
+   //  snprintf(procbuf, sizeof(procbuf), "%3i%%", ChargeLevel);		// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+   //  snprintf(procbuf, sizeof(procbuf), "%i%% ", ChargeLevel); 		// пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+     sprintf(procbuf, "%3i", ChargeLevel);		// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
      strlcat(procbuf, "%%", sizeof(procbuf));
      dsp.setTextSize(ProcFS); 					// setTextSize
-     dsp.setCursor(ProcX, ProcY); 				// Установка координат для вывода
-     dsp.printf(procbuf); 			// Вывод процентов заряда батареи (текущим цветом)
+     dsp.setCursor(ProcX, ProcY); 				// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+     dsp.printf(procbuf); 			// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
   #endif
   #ifdef DSP_OLED
      char procbuf[6];
-     sprintf(procbuf, "%4i", ChargeLevel);		// формат вправо
+     sprintf(procbuf, "%4i", ChargeLevel);		// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
      strlcat(procbuf, "%%", sizeof(procbuf));
 //     dsp.setTextColor(config.theme.clock, config.theme.background);
-     dsp.setCursor(ProcX, ProcY); 			// Установка координат для вывода процентов заряда
-     if (e == 1) dsp.printf(procbuf);	  		// Вывод процентов заряда батареи с форматом
+     dsp.setCursor(ProcX, ProcY); 			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+     if (e == 1) dsp.printf(procbuf);	  		// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
      if (e > 2) {
-        if (config.store.voltageon) {  			// Если напряжение выводится
+        if (config.store.voltageon) {  			// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         char voltbuf[7];
         snprintf(voltbuf, sizeof(voltbuf), "%.2fv", Volt);
-//       if (display.mode()!=PLAYER) {			// и если не режим "Player"
-//       if (player.status()!=PLAYING) {			// и если не режим "Play"
-//          dsp.setCursor(ProcX, ProcY);			// Установка координат для вывода напряжения
-             dsp.printf(voltbuf);     /* } */			// Вывод напряжения
+//       if (display.mode()!=PLAYER) {			// пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ "Player"
+//       if (player.status()!=PLAYING) {			// пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ "Play"
+//          dsp.setCursor(ProcX, ProcY);			// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+             dsp.printf(voltbuf);     /* } */			// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         }
-     }							// Конец вывода напряжения
+     }							// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
      if (e > 3) {e = 0;}
      e++;
   #endif
